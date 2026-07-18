@@ -490,53 +490,67 @@
 
 .width-handle {
   position: absolute;
-  top: 10px;
-  bottom: 10px;
-  width: 8px;
-  cursor: ew-resize;
-  z-index: 4;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: ew-resize !important;
+  z-index: 8;
   touch-action: none;
+  pointer-events: auto;
 }
 
 .width-handle--left {
-  left: 0;
+  left: -4px;
 }
 
 .width-handle--right {
-  right: 0;
+  right: -4px;
 }
 
 .width-handle::after {
   content: '';
   position: absolute;
-  top: 20%;
-  bottom: 20%;
+  top: 18%;
+  bottom: 18%;
   width: 3px;
   border-radius: 999px;
   background: transparent;
-  transition: background 120ms ease;
+  cursor: ew-resize !important;
+  transition: background 120ms ease, opacity 120ms ease;
 }
 
 .width-handle--left::after {
-  left: 2px;
+  left: 5px;
 }
 
 .width-handle--right::after {
-  right: 2px;
+  right: 5px;
+}
+
+.width-handle:hover,
+.width-handle:hover *,
+.width-handle:hover::after,
+.width-handle:active,
+.width-handle:active::after {
+  cursor: ew-resize !important;
 }
 
 .width-handle:hover::after,
 .width-handle:active::after {
-  background: color-mix(in srgb, var(--accent) 75%, transparent);
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  opacity: 1;
 }
 
-body.is-resizing-x {
+/* While hovering a playlist edge, force the resize cursor on the card too */
+.card--playlist:has(.width-handle:hover),
+.card--playlist:has(.width-handle:hover) * {
   cursor: ew-resize !important;
-  user-select: none;
 }
 
+body.is-resizing-x,
 body.is-resizing-x * {
   cursor: ew-resize !important;
+  user-select: none;
 }
 
 /* Resize */
