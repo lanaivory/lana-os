@@ -43,6 +43,8 @@ export type AppState = {
   boardColumns: string[][]
   /** Optional custom card body heights (px) */
   cardHeights: Record<string, number>
+  /** Optional custom widths for playlist cards (px) */
+  cardWidths: Record<string, number>
   /** Explicit task order inside each context list */
   listOrders: Record<string, string[]>
 }
@@ -78,6 +80,7 @@ export const LIST_COLORS = [
 
 export function createEmptyState(): AppState {
   const lists = DEFAULT_LISTS.map((l) => ({ ...l }))
+  const listIds = lists.map((l) => l.id)
   return {
     tasks: {},
     lists,
@@ -89,9 +92,11 @@ export function createEmptyState(): AppState {
     seeded: false,
     boardColumns: [
       ['today', 'tomorrow', 'week'],
-      ...lists.map((l) => [l.id]),
+      listIds.slice(0, 3),
+      listIds.slice(3),
     ],
     cardHeights: {},
+    cardWidths: {},
     listOrders: {},
   }
 }

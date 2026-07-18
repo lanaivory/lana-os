@@ -3,7 +3,8 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { isPlaylistId } from '../lib/board'
 import type { AppState, PlaylistId } from '../lib/types'
 import type { InsertionState } from './InsertionLine'
 import { ContextListCard, PlaylistCard, renderCardIdIsPlaylist } from './ListCard'
@@ -23,7 +24,8 @@ type Props = {
   onAddToList: (listId: string, text: string) => void
   onAddToPlaylist: (playlistId: PlaylistId, text: string) => void
   onSortByTimeChange: (value: boolean) => void
-  onResize: (cardId: string, height: number | null) => void
+  onResizeHeight: (cardId: string, height: number | null) => void
+  onResizeWidth: (cardId: string, width: number | null) => void
 }
 
 export function Board({
@@ -41,7 +43,8 @@ export function Board({
   onAddToList,
   onAddToPlaylist,
   onSortByTimeChange,
-  onResize,
+  onResizeHeight,
+  onResizeWidth,
 }: Props) {
   return (
     <div className="board" aria-label="Lana OS board">
@@ -49,9 +52,10 @@ export function Board({
 
       {state.boardColumns.map((column, colIndex) => {
         const cardIds = column.map((id) => `card:${id}`)
+        const colWidth = columnWidth(column, state.cardWidths)
         return (
           <div key={`col-${colIndex}`} className="board__col-wrap">
-            <BoardColumn columnIndex={colIndex}>
+            <BoardColumn columnIndex={colIndex} width={colWidth}>
               <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
                 {column.map((cardId, cardIndex) => {
                   const insertBefore =
@@ -88,7 +92,8 @@ export function Board({
                         onRemoveFromPlaylist={onRemoveFromPlaylist}
                         onToggleCollapsed={onTogglePlaylistCollapsed}
                         onAddTask={onAddToPlaylist}
-                        onResize={onResize}
+                        onResizeHeight={onResizeHeight}
+                        onResizeWidth={onResizeWidth}
                       />
                     )
                   }
@@ -106,7 +111,7 @@ export function Board({
                       onDelete={onDelete}
                       onToggleCollapsed={onToggleListCollapsed}
                       onAddTask={onAddToList}
-                      onResize={onResize}
+                      onResizeHeight={onResizeHeight}
                     />
                   )
                 })}
@@ -130,11 +135,24 @@ export function Board({
   )
 }
 
+function columnWidth(
+  column: string[],
+  widths: Record<string, number>,
+): number | undefined {
+  let max = 0
+  for (const id of column) {
+    if (isPlaylistId(id) && widths[id]) max = Math.max(max, widths[id])
+  }
+  return max > 0 ? max : undefined
+}
+
 function BoardColumn({
   columnIndex,
+  width,
   children,
 }: {
   columnIndex: number
+  width?: number
   children: ReactNode
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -142,10 +160,15 @@ function BoardColumn({
     data: { type: 'column', columnIndex },
   })
 
+  const style: CSSProperties | undefined = width
+    ? { width, flexBasis: width }
+    : undefined
+
   return (
     <div
       ref={setNodeRef}
       className={`board__col ${isOver ? 'is-col-over' : ''}`}
+      style={style}
     >
       {children}
     </div>

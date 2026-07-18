@@ -13,8 +13,10 @@ import {
 } from '../lib/board'
 import type { AppState, PlaylistId, Task } from '../lib/types'
 import { AddTaskRow } from './AddTaskRow'
+import { DragHandle } from './DragHandle'
 import { ResizeHandle } from './ResizeHandle'
 import { TaskRow } from './TaskRow'
+import { WidthResizeHandle } from './WidthResizeHandle'
 
 export type CardDragData = {
   type: 'card'
@@ -28,7 +30,7 @@ type SharedProps = {
   insertBefore?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
-  onResize: (cardId: string, height: number | null) => void
+  onResizeHeight: (cardId: string, height: number | null) => void
   taskInsertIndex?: number | null
 }
 
@@ -48,7 +50,7 @@ export function ContextListCard({
   onDelete,
   onToggleCollapsed,
   onAddTask,
-  onResize,
+  onResizeHeight,
   taskInsertIndex = null,
 }: ContextProps) {
   const list = state.lists.find((l) => l.id === listId)
@@ -72,24 +74,25 @@ export function ContextListCard({
       cardId={cardId}
       insertBefore={insertBefore}
       height={state.cardHeights[cardId]}
-      onResize={onResize}
+      onResizeHeight={onResizeHeight}
       className={list.collapsed ? 'is-collapsed' : ''}
       style={{ '--accent': list.color } as CSSProperties}
+      title={
+        <>
+          <button
+            type="button"
+            className="card__toggle"
+            onClick={() => onToggleCollapsed(list.id)}
+            aria-expanded={!list.collapsed}
+          >
+            <span className="chev">{list.collapsed ? '▸' : '▾'}</span>
+            <span className="card__dot" />
+            <h2>{list.name}</h2>
+          </button>
+          <span className="card__count">{tasks.length}</span>
+        </>
+      }
     >
-      <header className="card__head">
-        <button
-          type="button"
-          className="card__toggle"
-          onClick={() => onToggleCollapsed(list.id)}
-          aria-expanded={!list.collapsed}
-        >
-          <span className="chev">{list.collapsed ? '▸' : '▾'}</span>
-          <span className="card__dot" />
-          <h2>{list.name}</h2>
-        </button>
-        <span className="card__count">{tasks.length}</span>
-      </header>
-
       {!list.collapsed && (
         <>
           <TaskDropBody
@@ -144,6 +147,7 @@ type PlaylistProps = SharedProps & {
   onRemoveFromPlaylist: (id: string, playlistId: PlaylistId) => void
   onToggleCollapsed: (playlistId: PlaylistId) => void
   onAddTask: (playlistId: PlaylistId, text: string) => void
+  onResizeWidth: (cardId: string, width: number | null) => void
 }
 
 export function PlaylistCard({
@@ -163,7 +167,8 @@ export function PlaylistCard({
   onRemoveFromPlaylist,
   onToggleCollapsed,
   onAddTask,
-  onResize,
+  onResizeHeight,
+  onResizeWidth,
   taskInsertIndex = null,
 }: PlaylistProps) {
   const collapsed = state.collapsedPlaylists[playlistId]
@@ -195,13 +200,17 @@ export function PlaylistCard({
         : 'This Week'
 
   const showTime = playlistId === 'today' || playlistId === 'tomorrow'
+  const width = state.cardWidths[cardId]
 
   return (
     <SortableCardShell
       cardId={cardId}
       insertBefore={insertBefore}
       height={state.cardHeights[cardId]}
-      onResize={onResize}
+      width={width}
+      onResizeHeight={onResizeHeight}
+      onResizeWidth={onResizeWidth}
+      enableWidthResize
       className={[
         'card--playlist',
         featured ? 'card--today' : '',
@@ -209,20 +218,21 @@ export function PlaylistCard({
       ]
         .filter(Boolean)
         .join(' ')}
+      title={
+        <>
+          <button
+            type="button"
+            className="card__toggle"
+            onClick={() => onToggleCollapsed(playlistId)}
+            aria-expanded={!collapsed}
+          >
+            <span className="chev">{collapsed ? '▸' : '▾'}</span>
+            <h2>{title}</h2>
+          </button>
+          <span className="card__count">{tasks.length}</span>
+        </>
+      }
     >
-      <header className="card__head">
-        <button
-          type="button"
-          className="card__toggle"
-          onClick={() => onToggleCollapsed(playlistId)}
-          aria-expanded={!collapsed}
-        >
-          <span className="chev">{collapsed ? '▸' : '▾'}</span>
-          <h2>{title}</h2>
-        </button>
-        <span className="card__count">{tasks.length}</span>
-      </header>
-
       {featured && !collapsed && (
         <div className="card__today-meta">
           <div>
@@ -254,7 +264,7 @@ export function PlaylistCard({
                 items={tasks.map((t) => `task:playlist:${playlistId}:${t.id}`)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="task-stack">
+                <div className="task-stack task-stack--compact">
                   {tasks.map((task, index) => (
                     <TaskRow
                       key={task.id}
@@ -264,6 +274,7 @@ export function PlaylistCard({
                       containerId={playlistId}
                       from="playlist"
                       sortableId={`task:playlist:${playlistId}:${task.id}`}
+                      compact
                       showTime={showTime}
                       showSource
                       playlistId={playlistId}
@@ -290,19 +301,27 @@ export function PlaylistCard({
 
 function SortableCardShell({
   cardId,
+  title,
   children,
   className = '',
   style,
   height,
-  onResize,
+  width,
+  onResizeHeight,
+  onResizeWidth,
+  enableWidthResize = false,
   insertBefore,
 }: {
   cardId: string
+  title: ReactNode
   children: ReactNode
   className?: string
   style?: CSSProperties
   height?: number
-  onResize: (cardId: string, height: number | null) => void
+  width?: number
+  onResizeHeight: (cardId: string, height: number | null) => void
+  onResizeWidth?: (cardId: string, width: number | null) => void
+  enableWidthResize?: boolean
   insertBefore?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -316,6 +335,8 @@ function SortableCardShell({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    width: width ?? undefined,
+    minWidth: width ?? undefined,
   }
 
   return (
@@ -326,22 +347,32 @@ function SortableCardShell({
         style={cardStyle}
         className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
       >
-        <button
-          type="button"
-          className="card__drag"
-          {...attributes}
-          {...listeners}
-          title="Drag list"
-          aria-label="Drag list"
-        >
-          ⋮⋮
-        </button>
+        <header className="card__head">
+          <DragHandle attributes={attributes} listeners={listeners} />
+          {title}
+        </header>
         {children}
         <ResizeHandle
           cardId={cardId}
           height={height}
-          onResize={onResize}
+          onResize={onResizeHeight}
         />
+        {enableWidthResize && onResizeWidth && (
+          <>
+            <WidthResizeHandle
+              cardId={cardId}
+              edge="left"
+              width={width}
+              onResize={onResizeWidth}
+            />
+            <WidthResizeHandle
+              cardId={cardId}
+              edge="right"
+              width={width}
+              onResize={onResizeWidth}
+            />
+          </>
+        )}
       </section>
     </>
   )
