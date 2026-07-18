@@ -1,20 +1,39 @@
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/core'
 import {
   SortableContext,
+  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import {
+  isPlaylistId,
+  orderedListTasks,
+  type BoardCardId,
+} from '../lib/board'
 import type { AppState, PlaylistId, Task } from '../lib/types'
 import { AddTaskRow } from './AddTaskRow'
+import { ResizeHandle } from './ResizeHandle'
 import { TaskRow } from './TaskRow'
 
-type ContextCardProps = {
-  listId: string
+export type CardDragData = {
+  type: 'card'
+  cardId: BoardCardId
+}
+
+type SharedProps = {
   state: AppState
   query: string
+  cardId: string
+  insertBefore?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onResize: (cardId: string, height: number | null) => void
+  taskInsertIndex?: number | null
+}
+
+type ContextProps = SharedProps & {
+  listId: string
   onToggleCollapsed: (listId: string) => void
   onAddTask: (listId: string, text: string) => void
 }
@@ -23,25 +42,38 @@ export function ContextListCard({
   listId,
   state,
   query,
+  cardId,
+  insertBefore,
   onToggle,
   onDelete,
   onToggleCollapsed,
   onAddTask,
-}: ContextCardProps) {
+  onResize,
+  taskInsertIndex = null,
+}: ContextProps) {
   const list = state.lists.find((l) => l.id === listId)
   if (!list) return null
 
-  const tasks = Object.values(state.tasks)
-    .filter((t) => t.listId === list.id)
-    .filter((t) => matchesQuery(t, query))
-    .sort((a, b) => {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1
-      return b.createdAt - a.createdAt
-    })
+  const taskIds = orderedListTasks(state, list.id, { hidePlanned: true }).filter(
+    (id) => {
+      const t = state.tasks[id]
+      if (!t) return false
+      const q = query.trim().toLowerCase()
+      if (!q) return true
+      return t.text.toLowerCase().includes(q)
+    },
+  )
+  const tasks = taskIds
+    .map((id) => state.tasks[id])
+    .filter((t): t is Task => Boolean(t))
 
   return (
-    <section
-      className={`card ${list.collapsed ? 'is-collapsed' : ''}`}
+    <SortableCardShell
+      cardId={cardId}
+      insertBefore={insertBefore}
+      height={state.cardHeights[cardId]}
+      onResize={onResize}
+      className={list.collapsed ? 'is-collapsed' : ''}
       style={{ '--accent': list.color } as CSSProperties}
     >
       <header className="card__head">
@@ -60,79 +92,54 @@ export function ContextListCard({
 
       {!list.collapsed && (
         <>
-          <div className="card__body">
+          <TaskDropBody
+            containerId={`list:${list.id}`}
+            height={state.cardHeights[cardId]}
+          >
             {tasks.length === 0 ? (
               <p className="card__empty">No tasks yet</p>
             ) : (
-              <div className="task-stack">
-                {tasks.map((task) => (
-                  <DraggableContextTask
-                    key={task.id}
-                    task={task}
-                    lists={state.lists}
-                    query={query}
-                    onToggle={onToggle}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </div>
+              <SortableContext
+                items={tasks.map((t) => `task:list:${list.id}:${t.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="task-stack">
+                  {tasks.map((task, index) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      lists={state.lists}
+                      query={query}
+                      containerId={list.id}
+                      from="list"
+                      sortableId={`task:list:${list.id}:${task.id}`}
+                      showSource={false}
+                      insertBefore={taskInsertIndex === index}
+                      onToggle={onToggle}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                  {taskInsertIndex === tasks.length && (
+                    <div className="insert-line insert-line--horizontal" />
+                  )}
+                </div>
+              </SortableContext>
             )}
-          </div>
+          </TaskDropBody>
           <AddTaskRow onAdd={(text) => onAddTask(list.id, text)} />
         </>
       )}
-    </section>
+    </SortableCardShell>
   )
 }
 
-function DraggableContextTask({
-  task,
-  lists,
-  query,
-  onToggle,
-  onDelete,
-}: {
-  task: Task
-  lists: AppState['lists']
-  query: string
-  onToggle: (id: string) => void
-  onDelete: (id: string) => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `list-${task.id}`,
-      data: { from: 'list' as const, taskId: task.id },
-    })
-
-  const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
-  }
-
-  return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <TaskRow
-        task={task}
-        lists={lists}
-        query={query}
-        onToggle={onToggle}
-        onDelete={onDelete}
-      />
-    </div>
-  )
-}
-
-type PlaylistCardProps = {
+type PlaylistProps = SharedProps & {
   playlistId: PlaylistId
-  state: AppState
-  query: string
   featured?: boolean
   liveClock?: string
   liveDate?: string
   sortByTime?: boolean
   onSortByTimeChange?: (value: boolean) => void
-  onToggle: (id: string) => void
-  onDelete: (id: string) => void
   onTimeChange: (id: string, time: string | null) => void
   onRemoveFromPlaylist: (id: string, playlistId: PlaylistId) => void
   onToggleCollapsed: (playlistId: PlaylistId) => void
@@ -143,6 +150,8 @@ export function PlaylistCard({
   playlistId,
   state,
   query,
+  cardId,
+  insertBefore,
   featured = false,
   liveClock,
   liveDate,
@@ -154,13 +163,19 @@ export function PlaylistCard({
   onRemoveFromPlaylist,
   onToggleCollapsed,
   onAddTask,
-}: PlaylistCardProps) {
+  onResize,
+  taskInsertIndex = null,
+}: PlaylistProps) {
   const collapsed = state.collapsedPlaylists[playlistId]
   const ids = state.playlists[playlistId]
   let tasks = ids
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
-    .filter((t) => matchesQuery(t, query))
+    .filter((t) => {
+      const q = query.trim().toLowerCase()
+      if (!q) return true
+      return t.text.toLowerCase().includes(q)
+    })
 
   if (sortByTime && playlistId === 'today') {
     tasks = [...tasks].sort((a, b) => {
@@ -172,11 +187,6 @@ export function PlaylistCard({
     })
   }
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: `drop-${playlistId}`,
-    data: { playlistId },
-  })
-
   const title =
     playlistId === 'today'
       ? 'Today'
@@ -187,14 +197,15 @@ export function PlaylistCard({
   const showTime = playlistId === 'today' || playlistId === 'tomorrow'
 
   return (
-    <section
-      ref={setNodeRef}
+    <SortableCardShell
+      cardId={cardId}
+      insertBefore={insertBefore}
+      height={state.cardHeights[cardId]}
+      onResize={onResize}
       className={[
-        'card',
         'card--playlist',
         featured ? 'card--today' : '',
         collapsed ? 'is-collapsed' : '',
-        isOver ? 'is-over' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -231,45 +242,146 @@ export function PlaylistCard({
 
       {!collapsed && (
         <>
-          <div className="card__body">
+          <TaskDropBody
+            containerId={`playlist:${playlistId}`}
+            height={state.cardHeights[cardId]}
+            playlistId={playlistId}
+          >
             {tasks.length === 0 ? (
               <p className="card__empty">drag tasks here to plan</p>
             ) : (
               <SortableContext
-                items={tasks.map((t) => `${playlistId}:${t.id}`)}
+                items={tasks.map((t) => `task:playlist:${playlistId}:${t.id}`)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="task-stack">
-                  {tasks.map((task) => (
+                  {tasks.map((task, index) => (
                     <TaskRow
                       key={task.id}
                       task={task}
                       lists={state.lists}
                       query={query}
-                      draggable
-                      sortableId={`${playlistId}:${task.id}`}
-                      dragData={{ from: playlistId, taskId: task.id }}
+                      containerId={playlistId}
+                      from="playlist"
+                      sortableId={`task:playlist:${playlistId}:${task.id}`}
                       showTime={showTime}
+                      showSource
                       playlistId={playlistId}
+                      insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
                       onTimeChange={onTimeChange}
                       onRemoveFromPlaylist={onRemoveFromPlaylist}
                     />
                   ))}
+                  {taskInsertIndex === tasks.length && (
+                    <div className="insert-line insert-line--horizontal" />
+                  )}
                 </div>
               </SortableContext>
             )}
-          </div>
+          </TaskDropBody>
           <AddTaskRow onAdd={(text) => onAddTask(playlistId, text)} />
         </>
       )}
-    </section>
+    </SortableCardShell>
   )
 }
 
-function matchesQuery(task: Task, query: string): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  return task.text.toLowerCase().includes(q)
+function SortableCardShell({
+  cardId,
+  children,
+  className = '',
+  style,
+  height,
+  onResize,
+  insertBefore,
+}: {
+  cardId: string
+  children: ReactNode
+  className?: string
+  style?: CSSProperties
+  height?: number
+  onResize: (cardId: string, height: number | null) => void
+  insertBefore?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({
+      id: `card:${cardId}`,
+      data: { type: 'card', cardId } satisfies CardDragData,
+    })
+
+  const cardStyle: CSSProperties = {
+    ...style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+
+  return (
+    <>
+      {insertBefore && <div className="insert-line insert-line--horizontal" />}
+      <section
+        ref={setNodeRef}
+        style={cardStyle}
+        className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
+      >
+        <button
+          type="button"
+          className="card__drag"
+          {...attributes}
+          {...listeners}
+          title="Drag list"
+          aria-label="Drag list"
+        >
+          ⋮⋮
+        </button>
+        {children}
+        <ResizeHandle
+          cardId={cardId}
+          height={height}
+          onResize={onResize}
+        />
+      </section>
+    </>
+  )
+}
+
+function TaskDropBody({
+  containerId,
+  height,
+  playlistId,
+  children,
+}: {
+  containerId: string
+  height?: number
+  playlistId?: PlaylistId
+  children: ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `tasks:${containerId}`,
+    data: {
+      type: 'task-container',
+      containerId,
+      playlistId,
+      listId: containerId.startsWith('list:')
+        ? containerId.slice(5)
+        : undefined,
+      isPlaylist: Boolean(playlistId) || containerId.startsWith('playlist:'),
+    },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`card__body card__scroll ${isOver ? 'is-task-over' : ''}`}
+      style={height ? { height, maxHeight: height } : undefined}
+    >
+      {children}
+    </div>
+  )
+}
+
+export function renderCardIdIsPlaylist(cardId: string): cardId is PlaylistId {
+  return isPlaylistId(cardId)
 }

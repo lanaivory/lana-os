@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  ensureBoardHasCards,
+  insertCardOnBoard,
+  withListOrderAppend,
+  withListOrderRemove,
+} from '../lib/board'
 import { classifyTask } from '../lib/classifier'
 import {
   completeTask,
@@ -22,6 +28,14 @@ function withPurgeAndRollover(state: AppState): AppState {
 
 function cloneState(state: AppState): AppState {
   return structuredClone(state)
+}
+
+function stripFromAllPlaylists(state: AppState, taskId: string): AppState['playlists'] {
+  return {
+    today: state.playlists.today.filter((id) => id !== taskId),
+    tomorrow: state.playlists.tomorrow.filter((id) => id !== taskId),
+    week: state.playlists.week.filter((id) => id !== taskId),
+  }
 }
 
 export function useLanaStore() {
@@ -95,6 +109,7 @@ export function useLanaStore() {
 
       commit((prev) => {
         const tasks = { ...prev.tasks }
+        let listOrders = { ...prev.listOrders }
         const playlists = {
           today: [...prev.playlists.today],
           tomorrow: [...prev.playlists.tomorrow],
@@ -116,12 +131,13 @@ export function useLanaStore() {
             overdue: false,
           }
           tasks[id] = task
+          listOrders = withListOrderAppend(listOrders, listId, id)
           if (playlistId && !playlists[playlistId].includes(id)) {
             playlists[playlistId] = [...playlists[playlistId], id]
           }
         }
 
-        return { ...prev, tasks, playlists }
+        return { ...prev, tasks, playlists, listOrders }
       })
     },
     [commit],
@@ -132,9 +148,12 @@ export function useLanaStore() {
       commit((prev) => {
         const task = prev.tasks[taskId]
         if (!task || task.listId === listId) return prev
+        let listOrders = withListOrderRemove(prev.listOrders, taskId)
+        listOrders = withListOrderAppend(listOrders, listId, taskId)
         return {
           ...prev,
           tasks: { ...prev.tasks, [taskId]: { ...task, listId } },
+          listOrders,
         }
       })
     },
@@ -186,7 +205,13 @@ export function useLanaStore() {
 
   const deleteTask = useCallback(
     (taskId: string) => {
-      commit((prev) => deleteTaskFromState(prev, taskId))
+      commit((prev) => {
+        const next = deleteTaskFromState(prev, taskId)
+        return {
+          ...next,
+          listOrders: withListOrderRemove(next.listOrders, taskId),
+        }
+      })
     },
     [commit],
   )
@@ -197,6 +222,10 @@ export function useLanaStore() {
       for (const [id, task] of Object.entries(prev.tasks)) {
         if (task.completed) {
           next = deleteTaskFromState(next, id)
+          next = {
+            ...next,
+            listOrders: withListOrderRemove(next.listOrders, id),
+          }
         }
       }
       return next
@@ -207,14 +236,9 @@ export function useLanaStore() {
     (taskId: string, playlistId: PlaylistId) => {
       commit((prev) => {
         if (!prev.tasks[taskId]) return prev
-        if (prev.playlists[playlistId].includes(taskId)) return prev
-        return {
-          ...prev,
-          playlists: {
-            ...prev.playlists,
-            [playlistId]: [...prev.playlists[playlistId], taskId],
-          },
-        }
+        const playlists = stripFromAllPlaylists(prev, taskId)
+        playlists[playlistId] = [...playlists[playlistId], taskId]
+        return { ...prev, playlists }
       })
     },
     [commit],
@@ -246,20 +270,13 @@ export function useLanaStore() {
   const moveBetweenPlaylists = useCallback(
     (
       taskId: string,
-      from: PlaylistId | null,
+      _from: PlaylistId | null,
       to: PlaylistId,
       toIndex: number,
     ) => {
       commit((prev) => {
         if (!prev.tasks[taskId]) return prev
-        const playlists = {
-          today: [...prev.playlists.today],
-          tomorrow: [...prev.playlists.tomorrow],
-          week: [...prev.playlists.week],
-        }
-        if (from) {
-          playlists[from] = playlists[from].filter((id) => id !== taskId)
-        }
+        const playlists = stripFromAllPlaylists(prev, taskId)
         const dest = playlists[to].filter((id) => id !== taskId)
         const idx = Math.max(0, Math.min(toIndex, dest.length))
         dest.splice(idx, 0, taskId)
@@ -270,17 +287,82 @@ export function useLanaStore() {
     [commit],
   )
 
-  const toggleListCollapsed = useCallback(
-    (listId: string) => {
-      setState((prev) => ({
+  /** Move/reorder a task inside a context list; clears playlist membership. */
+  const moveTaskInLists = useCallback(
+    (taskId: string, toListId: string, toIndex: number) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task) return prev
+        let listOrders = withListOrderRemove(prev.listOrders, taskId)
+        const dest = [...(listOrders[toListId] ?? [])].filter((id) => id !== taskId)
+        // Keep only ids that still belong / will belong
+        const idx = Math.max(0, Math.min(toIndex, dest.length))
+        dest.splice(idx, 0, taskId)
+        listOrders = { ...listOrders, [toListId]: dest }
+        return {
+          ...prev,
+          tasks: {
+            ...prev.tasks,
+            [taskId]: { ...task, listId: toListId },
+          },
+          listOrders,
+          playlists: stripFromAllPlaylists(prev, taskId),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const reorderListTasks = useCallback(
+    (listId: string, orderedIds: string[]) => {
+      commit((prev) => ({
         ...prev,
-        lists: prev.lists.map((l) =>
-          l.id === listId ? { ...l, collapsed: !l.collapsed } : l,
-        ),
+        listOrders: { ...prev.listOrders, [listId]: orderedIds },
       }))
     },
-    [],
+    [commit],
   )
+
+  const setBoardColumns = useCallback((boardColumns: string[][]) => {
+    commit((prev) => ({
+      ...prev,
+      boardColumns: ensureBoardHasCards(
+        boardColumns,
+        prev.lists.map((l) => l.id),
+      ),
+    }))
+  }, [commit])
+
+  const moveBoardCard = useCallback(
+    (
+      cardId: string,
+      target: { column: number; index: number } | { newColumnAt: number },
+    ) => {
+      commit((prev) => ({
+        ...prev,
+        boardColumns: insertCardOnBoard(prev.boardColumns, cardId, target),
+      }))
+    },
+    [commit],
+  )
+
+  const setCardHeight = useCallback((cardId: string, height: number | null) => {
+    setState((prev) => {
+      const cardHeights = { ...prev.cardHeights }
+      if (height == null) delete cardHeights[cardId]
+      else cardHeights[cardId] = height
+      return { ...prev, cardHeights }
+    })
+  }, [])
+
+  const toggleListCollapsed = useCallback((listId: string) => {
+    setState((prev) => ({
+      ...prev,
+      lists: prev.lists.map((l) =>
+        l.id === listId ? { ...l, collapsed: !l.collapsed } : l,
+      ),
+    }))
+  }, [])
 
   const togglePlaylistCollapsed = useCallback((playlistId: PlaylistId) => {
     setState((prev) => ({
@@ -308,6 +390,8 @@ export function useLanaStore() {
               color,
             },
           ],
+          boardColumns: [...prev.boardColumns, [id]],
+          listOrders: { ...prev.listOrders, [id]: [] },
         }
       })
     },
@@ -345,6 +429,7 @@ export function useLanaStore() {
         return {
           ...prev,
           tasks: { ...prev.tasks, [id]: task },
+          listOrders: withListOrderAppend(prev.listOrders, listId, id),
         }
       })
     },
@@ -376,6 +461,7 @@ export function useLanaStore() {
           ...prev,
           tasks: { ...prev.tasks, [id]: task },
           playlists,
+          listOrders: withListOrderAppend(prev.listOrders, listId, id),
         }
       })
     },
@@ -412,6 +498,11 @@ export function useLanaStore() {
     removeFromPlaylist,
     reorderPlaylist,
     moveBetweenPlaylists,
+    moveTaskInLists,
+    reorderListTasks,
+    setBoardColumns,
+    moveBoardCard,
+    setCardHeight,
     toggleListCollapsed,
     togglePlaylistCollapsed,
     createList,
