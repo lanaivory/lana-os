@@ -733,14 +733,15 @@ body.is-resizing * {
 }
 
 .task__source {
+  flex: 0 0 auto;
   color: var(--faint);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .task--compact .badge {
-  margin-left: 6px;
-  vertical-align: middle;
+  flex: 0 0 auto;
 }
 
 .badge {

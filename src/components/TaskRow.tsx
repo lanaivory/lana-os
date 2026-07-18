@@ -126,13 +126,15 @@ export function TaskRow({
 
           <p className="task__text">
             <HighlightedText text={task.text} query={query} />
-            {showSource && source && (
-              <span className="task__source"> ({source.name})</span>
-            )}
-            {task.overdue && !task.completed && (
-              <span className="badge badge--overdue">OVERDUE</span>
-            )}
           </p>
+
+          {showSource && source && (
+            <span className="task__source">({source.name})</span>
+          )}
+
+          {task.overdue && !task.completed && (
+            <span className="badge badge--overdue">OVERDUE</span>
+          )}
 
           {url && (
             <a
