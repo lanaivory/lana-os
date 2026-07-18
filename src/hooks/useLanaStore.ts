@@ -11,25 +11,27 @@ import { splitCaptureText } from '../lib/parseCapture'
 import { applyMorningRollover } from '../lib/rollover'
 import { loadState, saveState } from '../lib/storage'
 import { routeTimingWords } from '../lib/timing'
-import type { AppState, PlaylistId, Task } from '../lib/types'
+import type { AppState, PlaylistId, Task, ThemeMode } from '../lib/types'
+import { LIST_COLORS } from '../lib/types'
 
-export type CaptureFlash = {
-  id: string
-  text: string
-  listId: string
-  playlistId: PlaylistId | null
-}
+const UNDO_LIMIT = 30
 
 function withPurgeAndRollover(state: AppState): AppState {
   return purgeStaleCompletions(applyMorningRollover(state))
+}
+
+function cloneState(state: AppState): AppState {
+  return structuredClone(state)
 }
 
 export function useLanaStore() {
   const [state, setState] = useState<AppState>(() =>
     withPurgeAndRollover(loadState()),
   )
-  const [flashes, setFlashes] = useState<CaptureFlash[]>([])
+  const [undoStack, setUndoStack] = useState<AppState[]>([])
   const hydrated = useRef(false)
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   useEffect(() => {
     if (!hydrated.current) {
@@ -39,7 +41,10 @@ export function useLanaStore() {
     saveState(state)
   }, [state])
 
-  // Periodic purge of completed tasks past the 1-hour window.
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.theme
+  }, [state.theme])
+
   useEffect(() => {
     const tick = () => {
       setState((prev) => {
@@ -51,7 +56,6 @@ export function useLanaStore() {
     return () => window.clearInterval(id)
   }, [])
 
-  // Re-check rollover when the tab becomes visible (overnight leave-open).
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== 'visible') return
@@ -64,117 +68,161 @@ export function useLanaStore() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
 
-  const capture = useCallback((raw: string) => {
-    const pieces = splitCaptureText(raw)
-    if (pieces.length === 0) return [] as CaptureFlash[]
+  const commit = useCallback((updater: (prev: AppState) => AppState) => {
+    const prev = stateRef.current
+    const next = updater(prev)
+    if (next === prev) return
+    setUndoStack((stack) => {
+      const stacked = [...stack, cloneState(prev)]
+      return stacked.length > UNDO_LIMIT ? stacked.slice(-UNDO_LIMIT) : stacked
+    })
+    setState(next)
+  }, [])
 
-    const newFlashes: CaptureFlash[] = []
+  const undo = useCallback(() => {
+    setUndoStack((stack) => {
+      if (stack.length === 0) return stack
+      const prev = stack[stack.length - 1]
+      setState(prev)
+      return stack.slice(0, -1)
+    })
+  }, [])
 
-    setState((prev) => {
-      const tasks = { ...prev.tasks }
-      const playlists = {
-        today: [...prev.playlists.today],
-        tomorrow: [...prev.playlists.tomorrow],
-        week: [...prev.playlists.week],
-      }
+  const capture = useCallback(
+    (raw: string) => {
+      const pieces = splitCaptureText(raw)
+      if (pieces.length === 0) return
 
-      for (const text of pieces) {
-        const { listId } = classifyTask(text)
-        const { playlistId } = routeTimingWords(text)
-        const id = createId()
-        const task: Task = {
-          id,
-          text,
-          listId,
-          completed: false,
-          completedAt: null,
-          createdAt: Date.now(),
-          time: null,
-          overdue: false,
+      commit((prev) => {
+        const tasks = { ...prev.tasks }
+        const playlists = {
+          today: [...prev.playlists.today],
+          tomorrow: [...prev.playlists.tomorrow],
+          week: [...prev.playlists.week],
         }
-        tasks[id] = task
-        if (playlistId && !playlists[playlistId].includes(id)) {
-          playlists[playlistId] = [...playlists[playlistId], id]
+
+        for (const text of pieces) {
+          const { listId } = classifyTask(text)
+          const { playlistId } = routeTimingWords(text)
+          const id = createId()
+          const task: Task = {
+            id,
+            text,
+            listId,
+            completed: false,
+            completedAt: null,
+            createdAt: Date.now(),
+            time: null,
+            overdue: false,
+          }
+          tasks[id] = task
+          if (playlistId && !playlists[playlistId].includes(id)) {
+            playlists[playlistId] = [...playlists[playlistId], id]
+          }
         }
-        newFlashes.push({ id, text, listId, playlistId })
+
+        return { ...prev, tasks, playlists }
+      })
+    },
+    [commit],
+  )
+
+  const setTaskList = useCallback(
+    (taskId: string, listId: string) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task || task.listId === listId) return prev
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [taskId]: { ...task, listId } },
+        }
+      })
+    },
+    [commit],
+  )
+
+  const setTaskText = useCallback(
+    (taskId: string, text: string) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task) return prev
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [taskId]: { ...task, text } },
+        }
+      })
+    },
+    [commit],
+  )
+
+  const setTaskTime = useCallback(
+    (taskId: string, time: string | null) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task) return prev
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [taskId]: { ...task, time } },
+        }
+      })
+    },
+    [commit],
+  )
+
+  const toggleComplete = useCallback(
+    (taskId: string) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task) return prev
+        const next = task.completed ? uncompleteTask(task) : completeTask(task)
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [taskId]: next },
+        }
+      })
+    },
+    [commit],
+  )
+
+  const deleteTask = useCallback(
+    (taskId: string) => {
+      commit((prev) => deleteTaskFromState(prev, taskId))
+    },
+    [commit],
+  )
+
+  const clearCompleted = useCallback(() => {
+    commit((prev) => {
+      let next = prev
+      for (const [id, task] of Object.entries(prev.tasks)) {
+        if (task.completed) {
+          next = deleteTaskFromState(next, id)
+        }
       }
-
-      return { ...prev, tasks, playlists }
+      return next
     })
+  }, [commit])
 
-    setFlashes(newFlashes)
-    window.setTimeout(() => setFlashes([]), 1600)
-    return newFlashes
-  }, [])
-
-  const setTaskList = useCallback((taskId: string, listId: string) => {
-    setState((prev) => {
-      const task = prev.tasks[taskId]
-      if (!task || task.listId === listId) return prev
-      return {
-        ...prev,
-        tasks: { ...prev.tasks, [taskId]: { ...task, listId } },
-      }
-    })
-  }, [])
-
-  const setTaskText = useCallback((taskId: string, text: string) => {
-    setState((prev) => {
-      const task = prev.tasks[taskId]
-      if (!task) return prev
-      return {
-        ...prev,
-        tasks: { ...prev.tasks, [taskId]: { ...task, text } },
-      }
-    })
-  }, [])
-
-  const setTaskTime = useCallback((taskId: string, time: string | null) => {
-    setState((prev) => {
-      const task = prev.tasks[taskId]
-      if (!task) return prev
-      return {
-        ...prev,
-        tasks: { ...prev.tasks, [taskId]: { ...task, time } },
-      }
-    })
-  }, [])
-
-  const toggleComplete = useCallback((taskId: string) => {
-    setState((prev) => {
-      const task = prev.tasks[taskId]
-      if (!task) return prev
-      const next = task.completed
-        ? uncompleteTask(task)
-        : completeTask(task)
-      return {
-        ...prev,
-        tasks: { ...prev.tasks, [taskId]: next },
-      }
-    })
-  }, [])
-
-  const deleteTask = useCallback((taskId: string) => {
-    setState((prev) => deleteTaskFromState(prev, taskId))
-  }, [])
-
-  const addToPlaylist = useCallback((taskId: string, playlistId: PlaylistId) => {
-    setState((prev) => {
-      if (!prev.tasks[taskId]) return prev
-      if (prev.playlists[playlistId].includes(taskId)) return prev
-      return {
-        ...prev,
-        playlists: {
-          ...prev.playlists,
-          [playlistId]: [...prev.playlists[playlistId], taskId],
-        },
-      }
-    })
-  }, [])
+  const addToPlaylist = useCallback(
+    (taskId: string, playlistId: PlaylistId) => {
+      commit((prev) => {
+        if (!prev.tasks[taskId]) return prev
+        if (prev.playlists[playlistId].includes(taskId)) return prev
+        return {
+          ...prev,
+          playlists: {
+            ...prev.playlists,
+            [playlistId]: [...prev.playlists[playlistId], taskId],
+          },
+        }
+      })
+    },
+    [commit],
+  )
 
   const removeFromPlaylist = useCallback(
     (taskId: string, playlistId: PlaylistId) => {
-      setState((prev) => ({
+      commit((prev) => ({
         ...prev,
         playlists: {
           ...prev.playlists,
@@ -182,17 +230,17 @@ export function useLanaStore() {
         },
       }))
     },
-    [],
+    [commit],
   )
 
   const reorderPlaylist = useCallback(
     (playlistId: PlaylistId, orderedIds: string[]) => {
-      setState((prev) => ({
+      commit((prev) => ({
         ...prev,
         playlists: { ...prev.playlists, [playlistId]: orderedIds },
       }))
     },
-    [],
+    [commit],
   )
 
   const moveBetweenPlaylists = useCallback(
@@ -202,7 +250,7 @@ export function useLanaStore() {
       to: PlaylistId,
       toIndex: number,
     ) => {
-      setState((prev) => {
+      commit((prev) => {
         if (!prev.tasks[taskId]) return prev
         const playlists = {
           today: [...prev.playlists.today],
@@ -219,17 +267,20 @@ export function useLanaStore() {
         return { ...prev, playlists }
       })
     },
-    [],
+    [commit],
   )
 
-  const toggleListCollapsed = useCallback((listId: string) => {
-    setState((prev) => ({
-      ...prev,
-      lists: prev.lists.map((l) =>
-        l.id === listId ? { ...l, collapsed: !l.collapsed } : l,
-      ),
-    }))
-  }, [])
+  const toggleListCollapsed = useCallback(
+    (listId: string) => {
+      setState((prev) => ({
+        ...prev,
+        lists: prev.lists.map((l) =>
+          l.id === listId ? { ...l, collapsed: !l.collapsed } : l,
+        ),
+      }))
+    },
+    [],
+  )
 
   const togglePlaylistCollapsed = useCallback((playlistId: PlaylistId) => {
     setState((prev) => ({
@@ -241,20 +292,134 @@ export function useLanaStore() {
     }))
   }, [])
 
+  const createList = useCallback(
+    (name?: string) => {
+      commit((prev) => {
+        const id = createId()
+        const color = LIST_COLORS[prev.lists.length % LIST_COLORS.length]
+        return {
+          ...prev,
+          lists: [
+            ...prev.lists,
+            {
+              id,
+              name: name?.trim() || `List ${prev.lists.length + 1}`,
+              collapsed: false,
+              color,
+            },
+          ],
+        }
+      })
+    },
+    [commit],
+  )
+
+  const renameList = useCallback(
+    (listId: string, name: string) => {
+      commit((prev) => ({
+        ...prev,
+        lists: prev.lists.map((l) =>
+          l.id === listId ? { ...l, name: name.trim() || l.name } : l,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  const addTaskToList = useCallback(
+    (listId: string, text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      commit((prev) => {
+        const id = createId()
+        const task: Task = {
+          id,
+          text: trimmed,
+          listId,
+          completed: false,
+          completedAt: null,
+          createdAt: Date.now(),
+          time: null,
+          overdue: false,
+        }
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [id]: task },
+        }
+      })
+    },
+    [commit],
+  )
+
+  const addTaskToPlaylist = useCallback(
+    (playlistId: PlaylistId, text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      commit((prev) => {
+        const { listId } = classifyTask(trimmed)
+        const id = createId()
+        const task: Task = {
+          id,
+          text: trimmed,
+          listId,
+          completed: false,
+          completedAt: null,
+          createdAt: Date.now(),
+          time: null,
+          overdue: false,
+        }
+        const playlists = {
+          ...prev.playlists,
+          [playlistId]: [...prev.playlists[playlistId], id],
+        }
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [id]: task },
+          playlists,
+        }
+      })
+    },
+    [commit],
+  )
+
+  const setTheme = useCallback((theme: ThemeMode) => {
+    setState((prev) => ({ ...prev, theme }))
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      theme: prev.theme === 'dark' ? 'light' : 'dark',
+    }))
+  }, [])
+
+  const setSortTodayByTime = useCallback((sortTodayByTime: boolean) => {
+    setState((prev) => ({ ...prev, sortTodayByTime }))
+  }, [])
+
   return {
     state,
-    flashes,
+    canUndo: undoStack.length > 0,
+    undo,
     capture,
     setTaskList,
     setTaskText,
     setTaskTime,
     toggleComplete,
     deleteTask,
+    clearCompleted,
     addToPlaylist,
     removeFromPlaylist,
     reorderPlaylist,
     moveBetweenPlaylists,
     toggleListCollapsed,
     togglePlaylistCollapsed,
+    createList,
+    renameList,
+    addTaskToList,
+    addTaskToPlaylist,
+    setTheme,
+    toggleTheme,
+    setSortTodayByTime,
   }
 }

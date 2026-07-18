@@ -1,3 +1,4 @@
+import { createDemoState } from './demo'
 import { createEmptyState, type AppState } from './types'
 
 const STORAGE_KEY = 'lana-os:v1'
@@ -5,11 +6,21 @@ const STORAGE_KEY = 'lana-os:v1'
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return createEmptyState()
+    if (!raw) {
+      const demo = createDemoState()
+      saveState(demo)
+      return demo
+    }
     const parsed = JSON.parse(raw) as AppState
-    return migrateState(parsed)
+    const migrated = migrateState(parsed)
+    if (!migrated.seeded && Object.keys(migrated.tasks).length === 0) {
+      const demo = createDemoState()
+      saveState(demo)
+      return demo
+    }
+    return migrated
   } catch {
-    return createEmptyState()
+    return createDemoState()
   }
 }
 
@@ -31,8 +42,11 @@ function migrateState(state: Partial<AppState>): AppState {
     collapsedPlaylists: {
       today: state.collapsedPlaylists?.today ?? false,
       tomorrow: state.collapsedPlaylists?.tomorrow ?? false,
-      week: state.collapsedPlaylists?.week ?? true,
+      week: state.collapsedPlaylists?.week ?? false,
     },
+    theme: state.theme === 'light' ? 'light' : 'dark',
+    sortTodayByTime: Boolean(state.sortTodayByTime),
+    seeded: Boolean(state.seeded),
   }
 }
 

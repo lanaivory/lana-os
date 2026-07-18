@@ -16,13 +16,22 @@ npm test
 npm run build
 ```
 
+## Layout
+
+- Top header: title, Find (`⌘K`), Undo, Clear Completed, + New List, theme toggle, settings
+- Capture bar under the header
+- Horizontally scrolling multi-column board
+  - Left: Today (live clock + sort-by-time) with Tomorrow and This Week stacked beneath
+  - Right: context list cards (Inbox, Personal, Content, Follow-up, Errands, Reading, plus any you create)
+
 ## Model
 
-- **Context lists** (Inbox, Personal, Content, Follow-up, Errands, Reading) own each task once.
-- **Playlists** (Today, Tomorrow, This Week) store ordered task ids only.
-- Editing, completing, or deleting a task updates it everywhere.
+- **Context lists** own each task once
+- **Playlists** (Today, Tomorrow, This Week) store ordered task ids only
+- Editing, completing, or deleting a task updates it everywhere
+- Persists in `localStorage` under `lana-os:v1`
 
-## Core logic (pure modules)
+## Core logic (unchanged modules)
 
 | Module | Role |
 | --- | --- |
@@ -30,11 +39,3 @@ npm run build
 | `src/lib/timing.ts` | Timing words → playlist |
 | `src/lib/rollover.ts` | Morning: Tomorrow → Today, mark overdue |
 | `src/lib/completion.ts` | Complete + auto-clear after 1 hour |
-
-Everything persists in `localStorage` under `lana-os:v1`. No accounts, no backend.
-
-## Shortcuts
-
-- `⌘K` / `Ctrl+K` — focus quick capture
-- `Enter` — capture (Shift+Enter for newline)
-- `/` — focus search

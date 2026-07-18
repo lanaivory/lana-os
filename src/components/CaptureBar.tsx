@@ -1,55 +1,42 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import type { CaptureFlash } from '../hooks/useLanaStore'
-import type { ContextList } from '../lib/types'
+import { useEffect, useRef, useState } from 'react'
 
 type Props = {
-  lists: ContextList[]
-  flashes: CaptureFlash[]
   onCapture: (raw: string) => void
-  openSignal: number
 }
 
-export function CaptureBar({ lists, flashes, onCapture, openSignal }: Props) {
+export function CaptureBar({ onCapture }: Props) {
   const [value, setValue] = useState('')
   const [pulse, setPulse] = useState(false)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (openSignal === 0) return
-    inputRef.current?.focus()
-    inputRef.current?.select()
-  }, [openSignal])
-
-  useEffect(() => {
-    if (flashes.length === 0) return
-    setPulse(true)
-    const t = window.setTimeout(() => setPulse(false), 700)
+    if (!pulse) return
+    const t = window.setTimeout(() => setPulse(false), 520)
     return () => window.clearTimeout(t)
-  }, [flashes])
+  }, [pulse])
 
   const submit = () => {
     const raw = value.trim()
     if (!raw) return
     onCapture(raw)
     setValue('')
+    setPulse(true)
   }
 
   return (
     <section className={`capture ${pulse ? 'is-pulse' : ''}`}>
       <div className="capture__shell">
-        <div className="capture__label">
-          <span className="capture__brand">Lana OS</span>
-          <kbd className="capture__kbd">⌘K</kbd>
-        </div>
-        <textarea
+        <span className="capture__plus" aria-hidden>
+          +
+        </span>
+        <input
           ref={inputRef}
           className="capture__input"
-          rows={1}
-          placeholder="Capture a thought… paste bullets, links, or a whole brain dump"
+          placeholder="Capture a thought… Enter to add"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter') {
               e.preventDefault()
               submit()
             }
@@ -65,32 +52,6 @@ export function CaptureBar({ lists, flashes, onCapture, openSignal }: Props) {
           Capture
         </button>
       </div>
-
-      {flashes.length > 0 && (
-        <ul className="capture__flash" aria-live="polite">
-          {flashes.map((f) => {
-            const list = lists.find((l) => l.id === f.listId)
-            return (
-              <li key={f.id}>
-                <span className="capture__flash-text">{f.text}</span>
-                <span
-                  className="capture__flash-tag"
-                  style={{ '--tag': list?.color ?? '#8b919a' } as CSSProperties}
-                >
-                  {list?.name ?? 'Inbox'}
-                  {f.playlistId ? ` · ${labelPlaylist(f.playlistId)}` : ''}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      )}
     </section>
   )
-}
-
-function labelPlaylist(id: string): string {
-  if (id === 'today') return 'Today'
-  if (id === 'tomorrow') return 'Tomorrow'
-  return 'This Week'
 }

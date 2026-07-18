@@ -1,4 +1,5 @@
 export type PlaylistId = 'today' | 'tomorrow' | 'week'
+export type ThemeMode = 'dark' | 'light'
 
 export type Task = {
   id: string
@@ -34,6 +35,10 @@ export type AppState = {
   /** Local calendar date (YYYY-MM-DD) of last morning rollover */
   lastRolloverDate: string
   collapsedPlaylists: Record<PlaylistId, boolean>
+  theme: ThemeMode
+  sortTodayByTime: boolean
+  /** Whether first-run demo content was applied */
+  seeded: boolean
 }
 
 export const DEFAULT_LISTS: ContextList[] = [
@@ -54,12 +59,26 @@ export const PLAYLIST_META: Record<
   week: { name: 'This Week', hint: 'Soft commitments' },
 }
 
+export const LIST_COLORS = [
+  '#8b919a',
+  '#7eb8a2',
+  '#d4a574',
+  '#8fa8c8',
+  '#c48b7a',
+  '#a89bc8',
+  '#c9b27c',
+  '#7aa8b8',
+]
+
 export function createEmptyState(): AppState {
   return {
     tasks: {},
     lists: DEFAULT_LISTS.map((l) => ({ ...l })),
     playlists: { today: [], tomorrow: [], week: [] },
     lastRolloverDate: '',
-    collapsedPlaylists: { today: false, tomorrow: false, week: true },
+    collapsedPlaylists: { today: false, tomorrow: false, week: false },
+    theme: 'dark',
+    sortTodayByTime: false,
+    seeded: false,
   }
 }
