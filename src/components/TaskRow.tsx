@@ -75,7 +75,6 @@ export function TaskRow({
         style={style}
         className={[
           'task',
-          showTime ? 'task--timed' : '',
           task.completed ? 'is-done' : '',
           task.overdue && !task.completed ? 'is-overdue' : '',
           sortable.isDragging ? 'is-dragging' : '',
@@ -109,23 +108,24 @@ export function TaskRow({
             </svg>
           </button>
 
-          {showTime && (
-            <input
-              type="time"
-              className="task__time"
-              value={task.time ?? ''}
-              onChange={(e) => onTimeChange?.(task.id, e.target.value || null)}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Optional time"
-            />
-          )}
-
           <div className="task__content">
             <p className="task__text">
               <HighlightedText text={task.text} query={query} />
             </p>
             <div className="task__meta">
+              {showTime && (
+                <input
+                  type="time"
+                  className="task__time"
+                  value={task.time ?? ''}
+                  onChange={(e) =>
+                    onTimeChange?.(task.id, e.target.value || null)
+                  }
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Optional time"
+                />
+              )}
               {showSource && source && (
                 <span className="task__source">({source.name})</span>
               )}

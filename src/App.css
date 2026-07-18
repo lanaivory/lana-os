@@ -550,12 +550,12 @@ body.is-resizing * {
 /* Tasks */
 .task {
   display: block;
-  padding: 10px 10px;
+  padding: 11px 12px;
   border-radius: 10px;
   border: 1px solid transparent;
   background: color-mix(in srgb, var(--text) 2%, transparent);
   cursor: grab;
-  min-height: 48px;
+  min-height: 52px;
   transition: background 120ms ease, border-color 120ms ease, transform 160ms cubic-bezier(.2,.8,.2,1);
 }
 
@@ -596,17 +596,17 @@ body.is-resizing * {
 }
 
 .task__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: start;
+  column-gap: 10px;
   width: 100%;
 }
 
 .task__check {
-  flex: 0 0 18px;
   width: 18px;
   height: 18px;
-  margin-top: 2px;
+  margin-top: 3px;
   border-radius: 5px;
   border: 1.5px solid var(--line-strong);
   background: transparent;
@@ -628,16 +628,14 @@ body.is-resizing * {
 }
 
 .task__time {
-  flex: 0 0 auto;
-  width: 96px;
+  width: 102px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: color-mix(in srgb, var(--bg) 55%, transparent);
   color: var(--text);
   font: inherit;
   font-size: 0.72rem;
-  padding: 3px 4px;
-  margin-top: 0;
+  padding: 3px 5px;
   color-scheme: dark;
 }
 
@@ -646,27 +644,27 @@ body.is-resizing * {
 }
 
 .task__content {
-  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .task__text {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  word-break: normal;
   white-space: normal;
+  hyphens: none;
 }
 
 .task__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .task__source {
