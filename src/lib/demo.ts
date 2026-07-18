@@ -102,6 +102,7 @@ export function createDemoState(now = Date.now()): AppState {
     seeded: true,
     boardColumns: defaultBoardColumns(lists.map((l) => l.id)),
     cardHeights: {},
+    cardWidths: {},
     listOrders: {
       inbox: ['d10'],
       personal: ['d4', 'd11'],

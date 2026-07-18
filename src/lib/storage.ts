@@ -59,6 +59,7 @@ function migrateState(state: Partial<AppState>): AppState {
     seeded: Boolean(state.seeded),
     boardColumns,
     cardHeights: state.cardHeights ?? {},
+    cardWidths: state.cardWidths ?? {},
     listOrders: state.listOrders ?? {},
   }
 }

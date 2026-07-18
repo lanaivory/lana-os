@@ -355,6 +355,15 @@ export function useLanaStore() {
     })
   }, [])
 
+  const setCardWidth = useCallback((cardId: string, width: number | null) => {
+    setState((prev) => {
+      const cardWidths = { ...prev.cardWidths }
+      if (width == null) delete cardWidths[cardId]
+      else cardWidths[cardId] = width
+      return { ...prev, cardWidths }
+    })
+  }, [])
+
   const toggleListCollapsed = useCallback((listId: string) => {
     setState((prev) => ({
       ...prev,
@@ -390,7 +399,15 @@ export function useLanaStore() {
               color,
             },
           ],
-          boardColumns: [...prev.boardColumns, [id]],
+          boardColumns: (() => {
+            const cols = prev.boardColumns.map((c) => [...c])
+            const last = cols[cols.length - 1]
+            if (last && last.length < 3 && !last.some((cid) => cid === 'today' || cid === 'tomorrow' || cid === 'week')) {
+              last.push(id)
+              return cols
+            }
+            return [...cols, [id]]
+          })(),
           listOrders: { ...prev.listOrders, [id]: [] },
         }
       })
@@ -503,6 +520,7 @@ export function useLanaStore() {
     setBoardColumns,
     moveBoardCard,
     setCardHeight,
+    setCardWidth,
     toggleListCollapsed,
     togglePlaylistCollapsed,
     createList,

@@ -19,6 +19,7 @@ import type { InsertionState } from './components/InsertionLine'
 import { SettingsModal } from './components/SettingsModal'
 import { useLanaStore } from './hooks/useLanaStore'
 import {
+  cardIdFromOverTarget,
   findPlaylistContaining,
   isPlaylistId,
   orderedListTasks,
@@ -144,10 +145,14 @@ export default function App() {
         setInsertion({ kind: 'card', column: col, index: len })
         return
       }
-      if (overData?.type === 'card' || overId.startsWith('card:')) {
-        const cardId =
-          (overData?.cardId as string | undefined) ?? overId.replace(/^card:/, '')
-        const loc = findCardLocation(store.state.boardColumns, cardId)
+
+      // Cards nest task droppables — resolve the parent card from any over target.
+      const overCardId =
+        (overData?.type === 'card' && (overData.cardId as string | undefined)) ||
+        cardIdFromOverTarget(overId)
+
+      if (overCardId) {
+        const loc = findCardLocation(store.state.boardColumns, overCardId)
         if (!loc) {
           setInsertion(null)
           return
@@ -266,7 +271,8 @@ export default function App() {
           onAddToList={store.addTaskToList}
           onAddToPlaylist={store.addTaskToPlaylist}
           onSortByTimeChange={store.setSortTodayByTime}
-          onResize={store.setCardHeight}
+          onResizeHeight={store.setCardHeight}
+          onResizeWidth={store.setCardWidth}
         />
 
         <DragOverlay

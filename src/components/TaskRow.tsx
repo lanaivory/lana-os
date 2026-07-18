@@ -19,6 +19,8 @@ type Props = {
   containerId: string
   from: 'playlist' | 'list'
   sortableId: string
+  /** Playlist compact row: time · title · (Category) on one line */
+  compact?: boolean
   showTime?: boolean
   showSource?: boolean
   onToggle: (id: string) => void
@@ -36,6 +38,7 @@ export function TaskRow({
   containerId,
   from,
   sortableId,
+  compact = false,
   showTime = false,
   showSource = true,
   onToggle,
@@ -75,6 +78,7 @@ export function TaskRow({
         style={style}
         className={[
           'task',
+          compact ? 'task--compact' : '',
           task.completed ? 'is-done' : '',
           task.overdue && !task.completed ? 'is-overdue' : '',
           sortable.isDragging ? 'is-dragging' : '',
@@ -108,32 +112,27 @@ export function TaskRow({
             </svg>
           </button>
 
-          <div className="task__content">
-            <p className="task__text">
-              <HighlightedText text={task.text} query={query} />
-            </p>
-            <div className="task__meta">
-              {showTime && (
-                <input
-                  type="time"
-                  className="task__time"
-                  value={task.time ?? ''}
-                  onChange={(e) =>
-                    onTimeChange?.(task.id, e.target.value || null)
-                  }
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Optional time"
-                />
-              )}
-              {showSource && source && (
-                <span className="task__source">({source.name})</span>
-              )}
-              {task.overdue && !task.completed && (
-                <span className="badge badge--overdue">OVERDUE</span>
-              )}
-            </div>
-          </div>
+          {showTime && (
+            <input
+              type="time"
+              className="task__time"
+              value={task.time ?? ''}
+              onChange={(e) => onTimeChange?.(task.id, e.target.value || null)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Optional time"
+            />
+          )}
+
+          <p className="task__text">
+            <HighlightedText text={task.text} query={query} />
+            {showSource && source && (
+              <span className="task__source"> ({source.name})</span>
+            )}
+            {task.overdue && !task.completed && (
+              <span className="badge badge--overdue">OVERDUE</span>
+            )}
+          </p>
 
           {url && (
             <a
