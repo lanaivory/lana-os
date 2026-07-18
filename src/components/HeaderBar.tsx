@@ -11,6 +11,7 @@ type Props = {
   theme: 'dark' | 'light'
   onToggleTheme: () => void
   onOpenSettings: () => void
+  textCaptureConnected?: boolean
 }
 
 export function HeaderBar({
@@ -24,6 +25,7 @@ export function HeaderBar({
   theme,
   onToggleTheme,
   onOpenSettings,
+  textCaptureConnected = false,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -35,7 +37,15 @@ export function HeaderBar({
 
   return (
     <header className="topbar">
-      <h1 className="topbar__title">Lana OS</h1>
+      <div className="topbar__brand">
+        <h1 className="topbar__title">Lana OS</h1>
+        {textCaptureConnected && (
+          <span className="topbar__textcap" title="Polling Twilio inbox">
+            <span className="topbar__textcap-dot" aria-hidden />
+            Text capture connected
+          </span>
+        )}
+      </div>
 
       <div className="topbar__actions">
         <label className="topbar__find">

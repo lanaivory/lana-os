@@ -18,6 +18,7 @@ import { HeaderBar } from './components/HeaderBar'
 import type { InsertionState } from './components/InsertionLine'
 import { SettingsModal } from './components/SettingsModal'
 import { useLanaStore } from './hooks/useLanaStore'
+import { useTwilioInbox } from './hooks/useTwilioInbox'
 import {
   cardIdFromOverTarget,
   findPlaylistContaining,
@@ -34,6 +35,7 @@ type ActiveDrag =
 
 export default function App() {
   const store = useLanaStore()
+  const { connected: textCaptureConnected } = useTwilioInbox(store.capture)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [searchFocusSignal, setSearchFocusSignal] = useState(0)
@@ -241,6 +243,7 @@ export default function App() {
         theme={store.state.theme}
         onToggleTheme={store.toggleTheme}
         onOpenSettings={() => setSettingsOpen(true)}
+        textCaptureConnected={textCaptureConnected}
       />
 
       <DndContext
