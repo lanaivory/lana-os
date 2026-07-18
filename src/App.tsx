@@ -243,8 +243,6 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <CaptureBar onCapture={store.capture} />
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -289,6 +287,8 @@ export default function App() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <CaptureBar onCapture={store.capture} />
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
