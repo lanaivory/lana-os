@@ -1,3 +1,4 @@
+import { ensureBoardHasCards, defaultBoardColumns } from './board'
 import { createDemoState } from './demo'
 import { createEmptyState, type AppState } from './types'
 
@@ -30,9 +31,18 @@ export function saveState(state: AppState): void {
 
 function migrateState(state: Partial<AppState>): AppState {
   const empty = createEmptyState()
+  const lists = state.lists?.length ? state.lists : empty.lists
+  const listIds = lists.map((l) => l.id)
+  const boardColumns = ensureBoardHasCards(
+    state.boardColumns?.length
+      ? state.boardColumns
+      : defaultBoardColumns(listIds),
+    listIds,
+  )
+
   return {
     tasks: state.tasks ?? empty.tasks,
-    lists: state.lists?.length ? state.lists : empty.lists,
+    lists,
     playlists: {
       today: state.playlists?.today ?? [],
       tomorrow: state.playlists?.tomorrow ?? [],
@@ -47,6 +57,9 @@ function migrateState(state: Partial<AppState>): AppState {
     theme: state.theme === 'light' ? 'light' : 'dark',
     sortTodayByTime: Boolean(state.sortTodayByTime),
     seeded: Boolean(state.seeded),
+    boardColumns,
+    cardHeights: state.cardHeights ?? {},
+    listOrders: state.listOrders ?? {},
   }
 }
 

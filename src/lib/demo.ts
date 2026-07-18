@@ -1,3 +1,4 @@
+import { defaultBoardColumns } from './board'
 import { localDateKey } from './storage'
 import type { AppState, Task } from './types'
 import { DEFAULT_LISTS } from './types'
@@ -84,9 +85,11 @@ export function createDemoState(now = Date.now()): AppState {
     }),
   }
 
+  const lists = DEFAULT_LISTS.map((l) => ({ ...l, collapsed: false }))
+
   return {
     tasks,
-    lists: DEFAULT_LISTS.map((l) => ({ ...l, collapsed: false })),
+    lists,
     playlists: {
       today: ['d4', 'd1', 'd2', 'd3'],
       tomorrow: ['d6', 'd7'],
@@ -97,5 +100,15 @@ export function createDemoState(now = Date.now()): AppState {
     theme: 'dark',
     sortTodayByTime: false,
     seeded: true,
+    boardColumns: defaultBoardColumns(lists.map((l) => l.id)),
+    cardHeights: {},
+    listOrders: {
+      inbox: ['d10'],
+      personal: ['d4', 'd11'],
+      content: ['d1', 'd5', 'd12'],
+      'follow-up': ['d2', 'd6'],
+      errands: ['d3', 'd7'],
+      reading: ['d8', 'd9'],
+    },
   }
 }

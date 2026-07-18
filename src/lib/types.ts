@@ -39,6 +39,12 @@ export type AppState = {
   sortTodayByTime: boolean
   /** Whether first-run demo content was applied */
   seeded: boolean
+  /** 2D board: each column is a top-to-bottom stack of card ids */
+  boardColumns: string[][]
+  /** Optional custom card body heights (px) */
+  cardHeights: Record<string, number>
+  /** Explicit task order inside each context list */
+  listOrders: Record<string, string[]>
 }
 
 export const DEFAULT_LISTS: ContextList[] = [
@@ -71,14 +77,21 @@ export const LIST_COLORS = [
 ]
 
 export function createEmptyState(): AppState {
+  const lists = DEFAULT_LISTS.map((l) => ({ ...l }))
   return {
     tasks: {},
-    lists: DEFAULT_LISTS.map((l) => ({ ...l })),
+    lists,
     playlists: { today: [], tomorrow: [], week: [] },
     lastRolloverDate: '',
     collapsedPlaylists: { today: false, tomorrow: false, week: false },
     theme: 'dark',
     sortTodayByTime: false,
     seeded: false,
+    boardColumns: [
+      ['today', 'tomorrow', 'week'],
+      ...lists.map((l) => [l.id]),
+    ],
+    cardHeights: {},
+    listOrders: {},
   }
 }
