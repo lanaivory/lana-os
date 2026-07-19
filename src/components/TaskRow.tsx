@@ -156,11 +156,20 @@ export function TaskRow({
             >
               <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
                 <path
-                  d="M6.5 9.5l3-3M7 4.5h.8a3.2 3.2 0 0 1 0 6.4H7M9 11.5h-.8a3.2 3.2 0 0 1 0-6.4H9"
+                  d="M6.2 9.8a2.6 2.6 0 0 1 0-3.7l1.4-1.4a2.6 2.6 0 1 1 3.7 3.7L10.5 9.2"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.4"
+                  strokeWidth="1.55"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9.8 6.2a2.6 2.6 0 0 1 0 3.7L8.4 11.3a2.6 2.6 0 1 1-3.7-3.7L5.5 6.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.55"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               </svg>
             </a>

@@ -27,12 +27,23 @@ const RULES: Rule[] = [
     patterns: [URL_PATTERN],
   },
   {
+    listId: 'errands',
+    reason: 'travel',
+    patterns: [
+      /\b(flight|flights|plane|airplane|airline)\b/i,
+      /\b(train|trains|train\s+tickets?)\b/i,
+      /\b(hotel|hotels|airbnb|hostel)\b/i,
+      /\b(reservation|reservations|reserve)\b/i,
+      /\b(trip|trips|travel|itinerary)\b/i,
+    ],
+  },
+  {
     listId: 'appointments',
     reason: 'appointment',
     patterns: [
       /\b(appt|appointment|appointments)\b/i,
-      /\b(book|booking|reserve|reservation)\b/i,
-      /\b((make|set\s*up|schedule|schedules?)\s+(an?\s+)?(appointment|appt|meeting|reservation))\b/i,
+      /\b(book|booking)\b/i,
+      /\b((make|set\s*up|schedule|schedules?)\s+(an?\s+)?(appointment|appt|meeting))\b/i,
       /\b(dentist|doctor|dr\.?|vet|veterinary|haircut|hair\s*cut|nails?|manicure|pedicure|salon|barber)\b/i,
       /\b(meeting\s+with)\b/i,
       /\b(checkup|check[- ]up|physical|dental\s+cleaning)\b/i,

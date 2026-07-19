@@ -53,5 +53,5 @@ Set these environment variables (from the [Twilio Console](https://console.twili
 For local dev, put them in a `.env` file at the project root (never commit secrets). On Vercel, add the same names in Project → Settings → Environment Variables.
 
 - `GET /api/inbox` lists recent inbound SMS (`sid`, `body`, `dateSent`). If any of the three variables are missing, it returns an empty list.
-- The client polls every 5 seconds, runs new message bodies through capture, and stores consumed `sid`s in `localStorage` so nothing is imported twice.
+- The client polls every 2 minutes (plus a header **Check now** button for an immediate pull), runs new message bodies through capture, and stores consumed `sid`s in `localStorage` so nothing is imported twice.
 - When the endpoint responds OK, the header shows a subtle **Text capture connected** indicator.

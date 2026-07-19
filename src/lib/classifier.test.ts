@@ -14,9 +14,6 @@ describe('classifyTask', () => {
     expect(classifyTask('Schedule an appointment with Dr. Lee').listId).toBe(
       'appointments',
     )
-    expect(classifyTask('Make a reservation for Friday').listId).toBe(
-      'appointments',
-    )
     expect(classifyTask('Haircut at 3').listId).toBe('appointments')
     expect(classifyTask('Meeting with Jordan tomorrow').listId).toBe(
       'appointments',
@@ -41,6 +38,15 @@ describe('classifyTask', () => {
     expect(classifyTask('Grab oat milk').listId).toBe('errands')
     expect(classifyTask('Order paper towels').listId).toBe('errands')
     expect(classifyTask('Drop off the package').listId).toBe('errands')
+  })
+
+  it('routes travel bookings to Errands', () => {
+    expect(classifyTask('Book a flight to SF').listId).toBe('errands')
+    expect(classifyTask('Buy train ticket').listId).toBe('errands')
+    expect(classifyTask('Reserve hotel for the trip').listId).toBe('errands')
+    expect(classifyTask('Airbnb in Portland').listId).toBe('errands')
+    expect(classifyTask('Make a reservation for Friday').listId).toBe('errands')
+    expect(classifyTask('Plane leaves at noon').listId).toBe('errands')
   })
 
   it('routes content work', () => {

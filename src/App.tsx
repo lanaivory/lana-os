@@ -35,7 +35,11 @@ type ActiveDrag =
 
 export default function App() {
   const store = useLanaStore()
-  const { connected: textCaptureConnected } = useTwilioInbox(store.capture)
+  const {
+    connected: textCaptureConnected,
+    checking: textCaptureChecking,
+    checkNow,
+  } = useTwilioInbox(store.capture)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [searchFocusSignal, setSearchFocusSignal] = useState(0)
@@ -245,6 +249,8 @@ export default function App() {
         onToggleTheme={store.toggleTheme}
         onOpenSettings={() => setSettingsOpen(true)}
         textCaptureConnected={textCaptureConnected}
+        textCaptureChecking={textCaptureChecking}
+        onCheckTexts={checkNow}
       />
 
       <DndContext
