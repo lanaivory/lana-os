@@ -1,7 +1,26 @@
 import type { Plugin } from 'vite'
+import {
+  buildSmsConfirmation,
+  buildTwimlMessage,
+  extractTwilioBody,
+} from './server/smsConfirm.ts'
 import { fetchTwilioInbox } from './server/twilioInbox.ts'
 
-/** Dev-only middleware mirroring Vercel GET /api/inbox. */
+async function readRequestBody(req: {
+  on: (event: string, cb: (...args: unknown[]) => void) => void
+}): Promise<string> {
+  const chunks: Buffer[] = []
+  await new Promise<void>((resolve, reject) => {
+    req.on('data', (chunk) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)))
+    })
+    req.on('end', () => resolve())
+    req.on('error', (err) => reject(err))
+  })
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+/** Dev-only middleware mirroring Vercel /api/inbox and /api/sms. */
 export function twilioInboxPlugin(): Plugin {
   return {
     name: 'lana-twilio-inbox',
@@ -28,6 +47,30 @@ export function twilioInboxPlugin(): Plugin {
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
           res.end('[]')
+        }
+      })
+
+      server.middlewares.use('/api/sms', async (req, res) => {
+        if (req.method && req.method !== 'POST') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'POST')
+          res.setHeader('Content-Type', 'text/plain')
+          res.end('Method Not Allowed')
+          return
+        }
+
+        try {
+          const rawBody = await readRequestBody(req)
+          const body = extractTwilioBody(rawBody)
+          const confirmation = buildSmsConfirmation(body)
+          const twiml = buildTwimlMessage(confirmation)
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'text/xml; charset=utf-8')
+          res.end(twiml)
+        } catch {
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'text/xml; charset=utf-8')
+          res.end(buildTwimlMessage('Got it ✅'))
         }
       })
     },
