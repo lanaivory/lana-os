@@ -35,7 +35,11 @@ type ActiveDrag =
 
 export default function App() {
   const store = useLanaStore()
-  const { connected: textCaptureConnected } = useTwilioInbox(store.capture)
+  const {
+    connected: textCaptureConnected,
+    checking: textCaptureChecking,
+    checkNow,
+  } = useTwilioInbox(store.capture)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [searchFocusSignal, setSearchFocusSignal] = useState(0)
@@ -112,6 +116,7 @@ export default function App() {
       | undefined
 
     if (data?.type === 'task' && data.taskId && data.from && data.containerId) {
+      store.clearNew(data.taskId)
       setActive({
         type: 'task',
         taskId: data.taskId,
@@ -244,6 +249,8 @@ export default function App() {
         onToggleTheme={store.toggleTheme}
         onOpenSettings={() => setSettingsOpen(true)}
         textCaptureConnected={textCaptureConnected}
+        textCaptureChecking={textCaptureChecking}
+        onCheckTexts={checkNow}
       />
 
       <DndContext
@@ -265,8 +272,9 @@ export default function App() {
           insertion={insertion}
           onToggle={store.toggleComplete}
           onDelete={store.deleteTask}
+          onListChange={store.setTaskList}
+          onClearNew={store.clearNew}
           onTimeChange={store.setTaskTime}
-          onRemoveFromPlaylist={store.removeFromPlaylist}
           onToggleListCollapsed={store.toggleListCollapsed}
           onTogglePlaylistCollapsed={store.togglePlaylistCollapsed}
           onAddToList={store.addTaskToList}

@@ -1,6 +1,7 @@
 import { ensureBoardHasCards, defaultBoardColumns } from './board'
 import { createDemoState } from './demo'
-import { createEmptyState, type AppState } from './types'
+import { ensureBuiltinLists } from './lists'
+import { createEmptyState, type AppState, type Task } from './types'
 
 const STORAGE_KEY = 'lana-os:v1'
 
@@ -31,7 +32,9 @@ export function saveState(state: AppState): void {
 
 function migrateState(state: Partial<AppState>): AppState {
   const empty = createEmptyState()
-  const lists = state.lists?.length ? state.lists : empty.lists
+  const lists = ensureBuiltinLists(
+    state.lists?.length ? state.lists : empty.lists,
+  )
   const listIds = lists.map((l) => l.id)
   const boardColumns = ensureBoardHasCards(
     state.boardColumns?.length
@@ -40,8 +43,16 @@ function migrateState(state: Partial<AppState>): AppState {
     listIds,
   )
 
+  const tasks: Record<string, Task> = {}
+  for (const [id, task] of Object.entries(state.tasks ?? {})) {
+    tasks[id] = {
+      ...task,
+      isNew: Boolean(task.isNew),
+    }
+  }
+
   return {
-    tasks: state.tasks ?? empty.tasks,
+    tasks,
     lists,
     playlists: {
       today: state.playlists?.today ?? [],

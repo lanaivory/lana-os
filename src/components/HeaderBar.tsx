@@ -12,6 +12,8 @@ type Props = {
   onToggleTheme: () => void
   onOpenSettings: () => void
   textCaptureConnected?: boolean
+  textCaptureChecking?: boolean
+  onCheckTexts?: () => void
 }
 
 export function HeaderBar({
@@ -26,6 +28,8 @@ export function HeaderBar({
   onToggleTheme,
   onOpenSettings,
   textCaptureConnected = false,
+  textCaptureChecking = false,
+  onCheckTexts,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -40,7 +44,7 @@ export function HeaderBar({
       <div className="topbar__brand">
         <h1 className="topbar__title">Lana OS</h1>
         {textCaptureConnected && (
-          <span className="topbar__textcap" title="Polling Twilio inbox">
+          <span className="topbar__textcap" title="Polling Twilio inbox every 2 minutes">
             <span className="topbar__textcap-dot" aria-hidden />
             Text capture connected
           </span>
@@ -76,6 +80,18 @@ export function HeaderBar({
           />
           <kbd>⌘K</kbd>
         </label>
+
+        {onCheckTexts && (
+          <button
+            type="button"
+            className="topbar__btn"
+            onClick={onCheckTexts}
+            disabled={textCaptureChecking}
+            title="Pull new texts now"
+          >
+            {textCaptureChecking ? 'Checking…' : 'Check now'}
+          </button>
+        )}
 
         <button
           type="button"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   loadConsumedSids,
   markConsumed,
@@ -10,26 +10,31 @@ export type InboxMessage = {
   dateSent: string
 }
 
-const POLL_MS = 5_000
+/** Background poll interval — on-demand "Check now" is separate. */
+const POLL_MS = 2 * 60_000
 
 /**
- * Poll GET /api/inbox every 5s. New SMS bodies go through the same capture pipeline.
+ * Poll GET /api/inbox every 2 minutes. New SMS bodies go through the same capture pipeline.
+ * Exposes checkNow() for an immediate pull from the header.
  */
-export function useTwilioInbox(capture: (raw: string) => void) {
+export function useTwilioInbox(
+  capture: (raw: string, opts?: { fromText?: boolean }) => void,
+) {
   const [connected, setConnected] = useState(false)
+  const [checking, setChecking] = useState(false)
   const consumedRef = useRef<Set<string>>(loadConsumedSids())
   const captureRef = useRef(capture)
   captureRef.current = capture
+  const inFlightRef = useRef<Promise<void> | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const pollOnce = useCallback(async () => {
+    if (inFlightRef.current) return inFlightRef.current
 
-    const poll = async () => {
+    const run = (async () => {
       try {
         const res = await fetch('/api/inbox', {
           headers: { Accept: 'application/json' },
         })
-        if (cancelled) return
 
         if (!res.ok) {
           setConnected(false)
@@ -53,22 +58,45 @@ export function useTwilioInbox(capture: (raw: string) => void) {
         for (const msg of fresh) {
           const body = msg.body.trim()
           if (body) {
-            captureRef.current(body)
+            captureRef.current(body, { fromText: true })
           }
           consumedRef.current = markConsumed(consumedRef.current, msg.sid)
         }
       } catch {
-        if (!cancelled) setConnected(false)
+        setConnected(false)
       }
+    })()
+
+    inFlightRef.current = run.finally(() => {
+      inFlightRef.current = null
+    })
+    return inFlightRef.current
+  }, [])
+
+  const checkNow = useCallback(async () => {
+    setChecking(true)
+    try {
+      await pollOnce()
+    } finally {
+      setChecking(false)
+    }
+  }, [pollOnce])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const tick = async () => {
+      if (cancelled) return
+      await pollOnce()
     }
 
-    void poll()
-    const id = window.setInterval(poll, POLL_MS)
+    void tick()
+    const id = window.setInterval(tick, POLL_MS)
     return () => {
       cancelled = true
       window.clearInterval(id)
     }
-  }, [])
+  }, [pollOnce])
 
-  return { connected }
+  return { connected, checking, checkNow }
 }

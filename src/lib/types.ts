@@ -12,6 +12,8 @@ export type Task = {
   time: string | null
   /** True when carried past a planning day without completion */
   overdue: boolean
+  /** Highlight tasks that just arrived via text capture */
+  isNew: boolean
 }
 
 export type ContextList = {
@@ -55,6 +57,7 @@ export const DEFAULT_LISTS: ContextList[] = [
   { id: 'content', name: 'Content', collapsed: false, color: '#d4a574' },
   { id: 'follow-up', name: 'Follow-up', collapsed: false, color: '#8fa8c8' },
   { id: 'errands', name: 'Errands', collapsed: false, color: '#c48b7a' },
+  { id: 'appointments', name: 'Appointments', collapsed: false, color: '#c9b27c' },
   { id: 'reading', name: 'Reading', collapsed: false, color: '#a89bc8' },
 ]
 

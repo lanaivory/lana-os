@@ -17,8 +17,9 @@ type Props = {
   insertion: InsertionState
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onListChange: (id: string, listId: string) => void
+  onClearNew: (id: string) => void
   onTimeChange: (id: string, time: string | null) => void
-  onRemoveFromPlaylist: (id: string, playlistId: PlaylistId) => void
   onToggleListCollapsed: (listId: string) => void
   onTogglePlaylistCollapsed: (playlistId: PlaylistId) => void
   onAddToList: (listId: string, text: string) => void
@@ -36,8 +37,9 @@ export function Board({
   insertion,
   onToggle,
   onDelete,
+  onListChange,
+  onClearNew,
   onTimeChange,
-  onRemoveFromPlaylist,
   onToggleListCollapsed,
   onTogglePlaylistCollapsed,
   onAddToList,
@@ -88,8 +90,9 @@ export function Board({
                         taskInsertIndex={taskInsertIndex}
                         onToggle={onToggle}
                         onDelete={onDelete}
+                        onListChange={onListChange}
+                        onClearNew={onClearNew}
                         onTimeChange={onTimeChange}
-                        onRemoveFromPlaylist={onRemoveFromPlaylist}
                         onToggleCollapsed={onTogglePlaylistCollapsed}
                         onAddTask={onAddToPlaylist}
                         onResizeHeight={onResizeHeight}
@@ -109,6 +112,8 @@ export function Board({
                       taskInsertIndex={taskInsertIndex}
                       onToggle={onToggle}
                       onDelete={onDelete}
+                      onListChange={onListChange}
+                      onClearNew={onClearNew}
                       onToggleCollapsed={onToggleListCollapsed}
                       onAddTask={onAddToList}
                       onResizeHeight={onResizeHeight}

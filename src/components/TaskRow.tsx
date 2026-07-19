@@ -1,9 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { CSSProperties } from 'react'
-import type { ContextList, PlaylistId, Task } from '../lib/types'
+import type { ContextList, Task } from '../lib/types'
 import { extractUrl } from '../lib/urls'
 import { HighlightedText } from './HighlightedText'
+import { ListTag } from './ListTag'
 
 export type TaskDragData = {
   type: 'task'
@@ -19,15 +20,15 @@ type Props = {
   containerId: string
   from: 'playlist' | 'list'
   sortableId: string
-  /** Playlist compact row: time · title · (Category) on one line */
+  /** Playlist compact row: time · title · list tag on one line */
   compact?: boolean
   showTime?: boolean
-  showSource?: boolean
+  showListTag?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onTimeChange?: (id: string, time: string | null) => void
-  onRemoveFromPlaylist?: (id: string, playlistId: PlaylistId) => void
-  playlistId?: PlaylistId
+  onListChange: (id: string, listId: string) => void
+  onClearNew: (id: string) => void
   insertBefore?: boolean
 }
 
@@ -40,12 +41,12 @@ export function TaskRow({
   sortableId,
   compact = false,
   showTime = false,
-  showSource = true,
+  showListTag = true,
   onToggle,
   onDelete,
   onTimeChange,
-  onRemoveFromPlaylist,
-  playlistId,
+  onListChange,
+  onClearNew,
   insertBefore = false,
 }: Props) {
   const dragData: TaskDragData = {
@@ -67,7 +68,6 @@ export function TaskRow({
     zIndex: sortable.isDragging ? 20 : undefined,
   }
 
-  const source = lists.find((l) => l.id === task.listId)
   const url = extractUrl(task.text)
 
   return (
@@ -81,6 +81,7 @@ export function TaskRow({
           compact ? 'task--compact' : '',
           task.completed ? 'is-done' : '',
           task.overdue && !task.completed ? 'is-overdue' : '',
+          task.isNew ? 'is-new' : '',
           sortable.isDragging ? 'is-dragging' : '',
         ]
           .filter(Boolean)
@@ -127,14 +128,21 @@ export function TaskRow({
           <div className="task__main">
             <p className="task__text">
               <HighlightedText text={task.text} query={query} />
-              {showSource && source && (
-                <span className="task__source"> ({source.name})</span>
-              )}
+              {task.isNew && <span className="badge badge--new">NEW</span>}
               {task.overdue && !task.completed && (
                 <span className="badge badge--overdue">OVERDUE</span>
               )}
             </p>
           </div>
+
+          {showListTag && (
+            <ListTag
+              lists={lists}
+              listId={task.listId}
+              onChange={(listId) => onListChange(task.id, listId)}
+              onOpen={() => onClearNew(task.id)}
+            />
+          )}
 
           {url && (
             <a
@@ -148,11 +156,20 @@ export function TaskRow({
             >
               <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
                 <path
-                  d="M6.5 9.5l3-3M7 4.5h.8a3.2 3.2 0 0 1 0 6.4H7M9 11.5h-.8a3.2 3.2 0 0 1 0-6.4H9"
+                  d="M6.2 9.8a2.6 2.6 0 0 1 0-3.7l1.4-1.4a2.6 2.6 0 1 1 3.7 3.7L10.5 9.2"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.4"
+                  strokeWidth="1.55"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9.8 6.2a2.6 2.6 0 0 1 0 3.7L8.4 11.3a2.6 2.6 0 1 1-3.7-3.7L5.5 6.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.55"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               </svg>
             </a>
@@ -162,23 +179,14 @@ export function TaskRow({
             className="task__actions"
             onPointerDown={(e) => e.stopPropagation()}
           >
-            {playlistId && onRemoveFromPlaylist && (
-              <button
-                type="button"
-                className="ghost"
-                title="Remove from playlist"
-                onClick={() => onRemoveFromPlaylist(task.id, playlistId)}
-              >
-                ✕
-              </button>
-            )}
             <button
               type="button"
               className="ghost danger"
               title="Delete"
+              aria-label="Delete task"
               onClick={() => onDelete(task.id)}
             >
-              Del
+              ✕
             </button>
           </div>
         </div>

@@ -13,6 +13,7 @@ export function createDemoState(now = Date.now()): AppState {
     createdAt: now - 60_000,
     time: null,
     overdue: false,
+    isNew: false,
     ...partial,
   })
 
@@ -74,7 +75,7 @@ export function createDemoState(now = Date.now()): AppState {
     d11: t({
       id: 'd11',
       text: 'Book dentist checkup',
-      listId: 'personal',
+      listId: 'appointments',
     }),
     d12: t({
       id: 'd12',
@@ -105,10 +106,11 @@ export function createDemoState(now = Date.now()): AppState {
     cardWidths: {},
     listOrders: {
       inbox: ['d10'],
-      personal: ['d4', 'd11'],
+      personal: ['d4'],
       content: ['d1', 'd5', 'd12'],
       'follow-up': ['d2', 'd6'],
       errands: ['d3', 'd7'],
+      appointments: ['d11'],
       reading: ['d8', 'd9'],
     },
   }
