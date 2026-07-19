@@ -40,7 +40,7 @@ npm run build
 
 ## Text capture (Twilio)
 
-Text a thought to your Twilio number and Lana OS imports it through the same capture pipeline (split → classify → timing-route → board). No database and no webhook — the app polls a Vercel serverless function.
+Text a thought to your Twilio number and Lana OS imports it through the same capture pipeline (split → classify → timing-route → board). No database — the app polls a Vercel serverless function for new messages, and an optional inbound webhook can reply with a smart confirmation.
 
 Set these environment variables (from the [Twilio Console](https://console.twilio.com/)):
 
@@ -55,3 +55,4 @@ For local dev, put them in a `.env` file at the project root (never commit secre
 - `GET /api/inbox` lists recent inbound SMS (`sid`, `body`, `dateSent`). If any of the three variables are missing, it returns an empty list.
 - The client polls every 2 minutes (plus a header **Check now** button for an immediate pull), runs new message bodies through capture, and stores consumed `sid`s in `localStorage` so nothing is imported twice.
 - When the endpoint responds OK, the header shows a subtle **Text capture connected** indicator.
+- `POST /api/sms` is the Twilio inbound webhook. It runs the message through the same splitter + classifier and replies with TwiML confirming each to-do and its list. It does **not** store anything — the board still fills via `/api/inbox` polling. In Twilio, set the number’s **A message comes in** webhook to `https://<your-deployment>/api/sms` using **HTTP POST**.
