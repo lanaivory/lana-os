@@ -30,6 +30,8 @@ type SharedProps = {
   insertBefore?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onListChange: (id: string, listId: string) => void
+  onClearNew: (id: string) => void
   onResizeHeight: (cardId: string, height: number | null) => void
   taskInsertIndex?: number | null
 }
@@ -48,6 +50,8 @@ export function ContextListCard({
   insertBefore,
   onToggle,
   onDelete,
+  onListChange,
+  onClearNew,
   onToggleCollapsed,
   onAddTask,
   onResizeHeight,
@@ -116,10 +120,12 @@ export function ContextListCard({
                       containerId={list.id}
                       from="list"
                       sortableId={`task:list:${list.id}:${task.id}`}
-                      showSource={false}
+                      showListTag
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
+                      onListChange={onListChange}
+                      onClearNew={onClearNew}
                     />
                   ))}
                   {taskInsertIndex === tasks.length && (
@@ -144,7 +150,6 @@ type PlaylistProps = SharedProps & {
   sortByTime?: boolean
   onSortByTimeChange?: (value: boolean) => void
   onTimeChange: (id: string, time: string | null) => void
-  onRemoveFromPlaylist: (id: string, playlistId: PlaylistId) => void
   onToggleCollapsed: (playlistId: PlaylistId) => void
   onAddTask: (playlistId: PlaylistId, text: string) => void
   onResizeWidth: (cardId: string, width: number | null) => void
@@ -163,8 +168,9 @@ export function PlaylistCard({
   onSortByTimeChange,
   onToggle,
   onDelete,
+  onListChange,
+  onClearNew,
   onTimeChange,
-  onRemoveFromPlaylist,
   onToggleCollapsed,
   onAddTask,
   onResizeHeight,
@@ -276,13 +282,13 @@ export function PlaylistCard({
                       sortableId={`task:playlist:${playlistId}:${task.id}`}
                       compact
                       showTime={showTime}
-                      showSource
-                      playlistId={playlistId}
+                      showListTag
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
                       onTimeChange={onTimeChange}
-                      onRemoveFromPlaylist={onRemoveFromPlaylist}
+                      onListChange={onListChange}
+                      onClearNew={onClearNew}
                     />
                   ))}
                   {taskInsertIndex === tasks.length && (

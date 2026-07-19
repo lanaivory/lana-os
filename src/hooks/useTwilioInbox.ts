@@ -15,7 +15,9 @@ const POLL_MS = 5_000
 /**
  * Poll GET /api/inbox every 5s. New SMS bodies go through the same capture pipeline.
  */
-export function useTwilioInbox(capture: (raw: string) => void) {
+export function useTwilioInbox(
+  capture: (raw: string, opts?: { fromText?: boolean }) => void,
+) {
   const [connected, setConnected] = useState(false)
   const consumedRef = useRef<Set<string>>(loadConsumedSids())
   const captureRef = useRef(capture)
@@ -53,7 +55,7 @@ export function useTwilioInbox(capture: (raw: string) => void) {
         for (const msg of fresh) {
           const body = msg.body.trim()
           if (body) {
-            captureRef.current(body)
+            captureRef.current(body, { fromText: true })
           }
           consumedRef.current = markConsumed(consumedRef.current, msg.sid)
         }

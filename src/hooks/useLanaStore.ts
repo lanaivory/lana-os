@@ -103,7 +103,7 @@ export function useLanaStore() {
   }, [])
 
   const capture = useCallback(
-    (raw: string) => {
+    (raw: string, opts?: { fromText?: boolean }) => {
       const pieces = splitCaptureText(raw)
       if (pieces.length === 0) return
 
@@ -129,6 +129,7 @@ export function useLanaStore() {
             createdAt: Date.now(),
             time: null,
             overdue: false,
+            isNew: Boolean(opts?.fromText),
           }
           tasks[id] = task
           listOrders = withListOrderAppend(listOrders, listId, id)
@@ -143,6 +144,18 @@ export function useLanaStore() {
     [commit],
   )
 
+  /** Clear NEW badge without pushing undo history. */
+  const clearNew = useCallback((taskId: string) => {
+    setState((prev) => {
+      const task = prev.tasks[taskId]
+      if (!task?.isNew) return prev
+      return {
+        ...prev,
+        tasks: { ...prev.tasks, [taskId]: { ...task, isNew: false } },
+      }
+    })
+  }, [])
+
   const setTaskList = useCallback(
     (taskId: string, listId: string) => {
       commit((prev) => {
@@ -152,7 +165,10 @@ export function useLanaStore() {
         listOrders = withListOrderAppend(listOrders, listId, taskId)
         return {
           ...prev,
-          tasks: { ...prev.tasks, [taskId]: { ...task, listId } },
+          tasks: {
+            ...prev.tasks,
+            [taskId]: { ...task, listId, isNew: false },
+          },
           listOrders,
         }
       })
@@ -181,7 +197,10 @@ export function useLanaStore() {
         if (!task) return prev
         return {
           ...prev,
-          tasks: { ...prev.tasks, [taskId]: { ...task, time } },
+          tasks: {
+            ...prev.tasks,
+            [taskId]: { ...task, time, isNew: false },
+          },
         }
       })
     },
@@ -196,7 +215,10 @@ export function useLanaStore() {
         const next = task.completed ? uncompleteTask(task) : completeTask(task)
         return {
           ...prev,
-          tasks: { ...prev.tasks, [taskId]: next },
+          tasks: {
+            ...prev.tasks,
+            [taskId]: { ...next, isNew: false },
+          },
         }
       })
     },
@@ -303,7 +325,11 @@ export function useLanaStore() {
           ...prev,
           tasks: {
             ...prev.tasks,
-            [taskId]: { ...task, listId: toListId },
+            [taskId]: {
+              ...task,
+              listId: toListId,
+              isNew: false,
+            },
           },
           listOrders,
           playlists: stripFromAllPlaylists(prev, taskId),
@@ -442,6 +468,7 @@ export function useLanaStore() {
           createdAt: Date.now(),
           time: null,
           overdue: false,
+          isNew: false,
         }
         return {
           ...prev,
@@ -469,6 +496,7 @@ export function useLanaStore() {
           createdAt: Date.now(),
           time: null,
           overdue: false,
+          isNew: false,
         }
         const playlists = {
           ...prev.playlists,
@@ -505,6 +533,7 @@ export function useLanaStore() {
     canUndo: undoStack.length > 0,
     undo,
     capture,
+    clearNew,
     setTaskList,
     setTaskText,
     setTaskTime,

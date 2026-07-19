@@ -10,6 +10,7 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'text'>): Task {
     createdAt: 1,
     time: null,
     overdue: false,
+    isNew: false,
     ...partial,
   }
 }

@@ -112,6 +112,7 @@ export default function App() {
       | undefined
 
     if (data?.type === 'task' && data.taskId && data.from && data.containerId) {
+      store.clearNew(data.taskId)
       setActive({
         type: 'task',
         taskId: data.taskId,
@@ -265,8 +266,9 @@ export default function App() {
           insertion={insertion}
           onToggle={store.toggleComplete}
           onDelete={store.deleteTask}
+          onListChange={store.setTaskList}
+          onClearNew={store.clearNew}
           onTimeChange={store.setTaskTime}
-          onRemoveFromPlaylist={store.removeFromPlaylist}
           onToggleListCollapsed={store.toggleListCollapsed}
           onTogglePlaylistCollapsed={store.togglePlaylistCollapsed}
           onAddToList={store.addTaskToList}

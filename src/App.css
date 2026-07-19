@@ -813,6 +813,82 @@ body.is-resizing * {
   background: color-mix(in srgb, var(--overdue) 16%, transparent);
 }
 
+.badge--new {
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 18%, transparent);
+}
+
+.list-tag {
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.list-tag__btn {
+  border: 0;
+  background: color-mix(in srgb, var(--tag, var(--muted)) 18%, transparent);
+  color: var(--tag, var(--muted));
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-tag__btn:hover {
+  background: color-mix(in srgb, var(--tag, var(--muted)) 28%, transparent);
+}
+
+.list-tag__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  min-width: 148px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.list-tag__menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.list-tag__menu button:hover,
+.list-tag__menu button.is-active {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.list-tag__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tag, var(--muted));
+  flex: 0 0 auto;
+}
+
 .task__link {
   flex: 0 0 24px;
   width: 24px;

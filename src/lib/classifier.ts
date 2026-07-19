@@ -16,6 +16,10 @@ type Rule = {
   patterns: RegExp[]
 }
 
+/**
+ * Order matters: more specific scheduling / communication rules first.
+ * URLs always win. Inbox only when nothing matches.
+ */
 const RULES: Rule[] = [
   {
     listId: 'reading',
@@ -23,38 +27,62 @@ const RULES: Rule[] = [
     patterns: [URL_PATTERN],
   },
   {
-    listId: 'reading',
-    reason: 'reading',
+    listId: 'appointments',
+    reason: 'appointment',
     patterns: [
-      /\b(read|reading|article|essay|book|chapter|newsletter|paper)\b/i,
+      /\b(appt|appointment|appointments)\b/i,
+      /\b(book|booking|reserve|reservation)\b/i,
+      /\b((make|set\s*up|schedule|schedules?)\s+(an?\s+)?(appointment|appt|meeting|reservation))\b/i,
+      /\b(dentist|doctor|dr\.?|vet|veterinary|haircut|hair\s*cut|nails?|manicure|pedicure|salon|barber)\b/i,
+      /\b(meeting\s+with)\b/i,
+      /\b(checkup|check[- ]up|physical|dental\s+cleaning)\b/i,
     ],
   },
   {
     listId: 'follow-up',
     reason: 'follow-up',
     patterns: [
-      /\b(follow[- ]?up|followup|email|reply|respond|call|ping|check in|check-in|message|dm|text)\b/i,
+      /\b(follow[- ]?up|followup)\b/i,
+      /\b(email|e-mail|reply|respond|reach\s*out|ping)\b/i,
+      /\b(call|text|message|dm|dms|sms)\b/i,
+      /\b(check\s*in|check-in)\b/i,
     ],
   },
   {
     listId: 'errands',
     reason: 'errand',
     patterns: [
-      /\b(errand|buy|purchase|pick up|pickup|grocery|groceries|pharmacy|post office|dry ?clean|return|drop off|dropoff|hardware|store)\b/i,
+      /\b(errand|errands)\b/i,
+      /\b(buy|purchase|grab|order|get)\b/i,
+      /\b(pick\s*up|pickup|drop\s*off|dropoff)\b/i,
+      /\b(return|returns)\b/i,
+      /\b(grocery|groceries|pharmacy|post\s*office|dry\s*clean|hardware|store)\b/i,
     ],
   },
   {
     listId: 'content',
     reason: 'content',
     patterns: [
-      /\b(write|draft|blog|post|script|newsletter|tweet|thread|video|edit|publish|outline|content)\b/i,
+      /\b(content|carousel|reel|reels|thumbnail|caption|captions)\b/i,
+      /\b(post|posts|publish|tweet|thread|blog)\b/i,
+      /\b(edit|film|filming|script|scripts|outline|draft|write)\b/i,
+      /\b(video|newsletter)\b/i,
+    ],
+  },
+  {
+    listId: 'reading',
+    reason: 'reading',
+    patterns: [
+      /\b(read|reading|article|essay|book|chapter|paper|skim)\b/i,
     ],
   },
   {
     listId: 'personal',
     reason: 'personal',
     patterns: [
-      /\b(personal|workout|gym|meditat|journal|family|health|doctor|dentist|therapy|self[- ]?care|habit)\b/i,
+      /\b(personal|self[- ]?care|selfcare)\b/i,
+      /\b(health|wellness|workout|gym|meditat|journal|family|habit|habits|stretch|walk)\b/i,
+      /\b(therapy|therapist)\b/i,
     ],
   },
 ]
