@@ -1,10 +1,13 @@
 import type { Plugin } from 'vite'
+import { assertPasscode } from './server/passcode.ts'
 import {
   buildSmsConfirmation,
   buildTwimlMessage,
   extractTwilioBody,
 } from './server/smsConfirm.ts'
+import { readCloudState, writeCloudState } from './server/stateStore.ts'
 import { fetchTwilioInbox } from './server/twilioInbox.ts'
+import type { AppState } from './src/lib/types.ts'
 
 async function readRequestBody(req: {
   on: (event: string, cb: (...args: unknown[]) => void) => void
@@ -20,7 +23,21 @@ async function readRequestBody(req: {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-/** Dev-only middleware mirroring Vercel /api/inbox and /api/sms. */
+function sendJson(
+  res: {
+    statusCode: number
+    setHeader: (k: string, v: string) => void
+    end: (b: string) => void
+  },
+  status: number,
+  body: unknown,
+) {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(body))
+}
+
+/** Dev-only middleware mirroring Vercel /api/inbox, /api/sms, /api/state. */
 export function twilioInboxPlugin(): Plugin {
   return {
     name: 'lana-twilio-inbox',
@@ -40,13 +57,9 @@ export function twilioInboxPlugin(): Plugin {
             TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
             TWILIO_NUMBER: process.env.TWILIO_NUMBER,
           })
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(messages))
+          sendJson(res, 200, messages)
         } catch {
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'application/json')
-          res.end('[]')
+          sendJson(res, 200, [])
         }
       })
 
@@ -72,6 +85,46 @@ export function twilioInboxPlugin(): Plugin {
           res.setHeader('Content-Type', 'text/xml; charset=utf-8')
           res.end(buildTwimlMessage('Got it ✅'))
         }
+      })
+
+      server.middlewares.use('/api/state', async (req, res) => {
+        const auth = assertPasscode(req.headers['x-app-pass'])
+        if (!auth.ok) {
+          sendJson(res, auth.status, { error: auth.message })
+          return
+        }
+
+        const method = req.method ?? 'GET'
+
+        if (method === 'GET') {
+          try {
+            const state = await readCloudState()
+            sendJson(res, 200, state)
+          } catch {
+            sendJson(res, 200, null)
+          }
+          return
+        }
+
+        if (method === 'POST') {
+          try {
+            const raw = await readRequestBody(req)
+            const parsed = raw ? (JSON.parse(raw) as unknown) : null
+            if (!parsed || typeof parsed !== 'object') {
+              sendJson(res, 400, { error: 'Expected JSON body' })
+              return
+            }
+            const saved = await writeCloudState(parsed as AppState)
+            sendJson(res, 200, { ok: true, saved })
+          } catch {
+            sendJson(res, 500, { error: 'Failed to save' })
+          }
+          return
+        }
+
+        res.statusCode = 405
+        res.setHeader('Allow', 'GET, POST')
+        sendJson(res, 405, { error: 'Method Not Allowed' })
       })
     },
   }

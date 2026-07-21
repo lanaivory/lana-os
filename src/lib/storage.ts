@@ -30,7 +30,7 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
-function migrateState(state: Partial<AppState>): AppState {
+export function migrateState(state: Partial<AppState>): AppState {
   const empty = createEmptyState()
   const lists = ensureBuiltinLists(
     state.lists?.length ? state.lists : empty.lists,
