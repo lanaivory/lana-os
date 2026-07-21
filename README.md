@@ -27,7 +27,30 @@ npm run build
 - **Context lists** own each task once
 - **Playlists** (Today, Tomorrow, This Week) store ordered task ids only
 - Editing, completing, or deleting a task updates it everywhere
-- Persists in `localStorage` under `lana-os:v1`
+- Local cache in `localStorage` under `lana-os:v1`; cloud source of truth via `GET`/`POST /api/state` when Vercel KV is configured
+
+## Installable app (PWA)
+
+Lana OS ships with a web app manifest + service worker so you can **Add to Home Screen** on a phone and open it full-screen like a native app (`standalone`, dark theme `#0b0d11`).
+
+## Cloud sync + passcode
+
+Across devices, the board syncs through Vercel KV:
+
+| Variable | Description |
+| --- | --- |
+| `KV_REST_API_URL` | Vercel KV REST URL |
+| `KV_REST_API_TOKEN` | Vercel KV REST token |
+| `KV_URL` | Optional Redis URL (also provided by Vercel KV) |
+| `APP_PASSCODE` | Shared passcode; required as `x-app-pass` on `/api/state` |
+
+**Create a store:** In the [Vercel dashboard](https://vercel.com/dashboard) open your project → **Storage** → **Create** → **KV** (or link an existing Upstash Redis / KV integration). Connect it to the project so the `KV_*` env vars appear, then redeploy. For local dev, run `vercel env pull` or paste the same values into `.env`.
+
+- `GET /api/state` returns the saved board JSON (or `null` if empty / KV unset).
+- `POST /api/state` saves the full board under the key `lana-os-state`.
+- If KV isn’t configured, the API no-ops and the client keeps using `localStorage` — nothing breaks.
+- On first load the app prompts for a passcode, stores it in `localStorage`, and sends it as the `x-app-pass` header on `/api/state` calls. When `APP_PASSCODE` is set, mismatched headers get `401`.
+- The client debounces saves on every change and polls `GET /api/state` about every 12 seconds so edits from another device show up.
 
 ## Core logic
 

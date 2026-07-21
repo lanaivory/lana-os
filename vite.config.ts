@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
     'TWILIO_ACCOUNT_SID',
     'TWILIO_AUTH_TOKEN',
     'TWILIO_NUMBER',
+    'KV_REST_API_URL',
+    'KV_REST_API_TOKEN',
+    'KV_URL',
+    'APP_PASSCODE',
   ] as const) {
     if (env[key] && !process.env[key]) {
       process.env[key] = env[key]

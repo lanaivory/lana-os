@@ -7,6 +7,11 @@ import {
 } from '../lib/board'
 import { classifyTask } from '../lib/classifier'
 import {
+  fetchCloudState,
+  pushCloudState,
+  statesEqual,
+} from '../lib/cloudSync'
+import {
   completeTask,
   deleteTaskFromState,
   purgeStaleCompletions,
@@ -21,6 +26,8 @@ import type { AppState, PlaylistId, Task, ThemeMode } from '../lib/types'
 import { LIST_COLORS } from '../lib/types'
 
 const UNDO_LIMIT = 30
+const CLOUD_SAVE_DEBOUNCE_MS = 600
+const CLOUD_POLL_MS = 12_000
 
 function withPurgeAndRollover(state: AppState): AppState {
   return purgeStaleCompletions(applyMorningRollover(state))
@@ -44,16 +51,80 @@ export function useLanaStore() {
   )
   const [undoStack, setUndoStack] = useState<AppState[]>([])
   const hydrated = useRef(false)
+  const cloudReady = useRef(false)
+  const applyingRemote = useRef(false)
+  const pendingCloudSave = useRef(false)
+  const saveTimer = useRef<number | null>(null)
   const stateRef = useRef(state)
   stateRef.current = state
 
+  // Local cache on every change; debounced cloud push after hydration.
   useEffect(() => {
     if (!hydrated.current) {
       hydrated.current = true
       return
     }
     saveState(state)
+
+    if (applyingRemote.current) {
+      applyingRemote.current = false
+      return
+    }
+    if (!cloudReady.current) return
+
+    pendingCloudSave.current = true
+    if (saveTimer.current != null) window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => {
+      const snapshot = stateRef.current
+      void pushCloudState(snapshot).finally(() => {
+        pendingCloudSave.current = false
+      })
+    }, CLOUD_SAVE_DEBOUNCE_MS)
+
+    return () => {
+      if (saveTimer.current != null) window.clearTimeout(saveTimer.current)
+    }
   }, [state])
+
+  // Initial cloud hydrate + cross-device poll.
+  useEffect(() => {
+    let cancelled = false
+
+    const applyRemote = (remote: AppState) => {
+      const next = withPurgeAndRollover(remote)
+      if (statesEqual(next, stateRef.current)) return
+      applyingRemote.current = true
+      setState(next)
+      saveState(next)
+    }
+
+    const pull = async () => {
+      const remote = await fetchCloudState()
+      if (cancelled || !remote) return
+      if (pendingCloudSave.current) return
+      applyRemote(remote)
+    }
+
+    ;(async () => {
+      const remote = await fetchCloudState()
+      if (cancelled) return
+      if (remote) applyRemote(remote)
+      cloudReady.current = true
+      // Seed cloud from this device if KV was empty.
+      if (!remote) {
+        void pushCloudState(stateRef.current)
+      }
+    })()
+
+    const id = window.setInterval(() => {
+      void pull()
+    }, CLOUD_POLL_MS)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.theme
