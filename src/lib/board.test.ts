@@ -67,15 +67,15 @@ describe('board layout helpers', () => {
   it('hides planned tasks from context list ordering', () => {
     const state = createEmptyState()
     state.tasks = {
-      a: task({ id: 'a', text: 'A', listId: 'content' }),
-      b: task({ id: 'b', text: 'B', listId: 'content' }),
+      a: task({ id: 'a', text: 'A', listId: 'content-todo' }),
+      b: task({ id: 'b', text: 'B', listId: 'content-todo' }),
     }
-    state.listOrders = { content: ['a', 'b'] }
+    state.listOrders = { 'content-todo': ['a', 'b'] }
     state.playlists.today = ['a']
     expect(plannedTaskIds(state).has('a')).toBe(true)
-    expect(orderedListTasks(state, 'content', { hidePlanned: true })).toEqual([
-      'b',
-    ])
-    expect(orderedListTasks(state, 'content')).toEqual(['a', 'b'])
+    expect(
+      orderedListTasks(state, 'content-todo', { hidePlanned: true }),
+    ).toEqual(['b'])
+    expect(orderedListTasks(state, 'content-todo')).toEqual(['a', 'b'])
   })
 })

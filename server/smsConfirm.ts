@@ -6,7 +6,7 @@ const TITLE_MAX = 48
 
 /** Map a classifier list id to the board list display name. */
 export function listDisplayName(listId: string): string {
-  return DEFAULT_LISTS.find((l) => l.id === listId)?.name ?? 'Inbox'
+  return DEFAULT_LISTS.find((l) => l.id === listId)?.name ?? 'Random'
 }
 
 /** Truncate a task title for a concise SMS line. */

@@ -46,7 +46,7 @@ export function ListTag({ lists, listId, onChange, onOpen }: Props) {
         aria-expanded={open}
         title="Change list"
       >
-        {current?.name ?? 'Inbox'}
+        {current?.name ?? 'Random'}
       </button>
       {open && (
         <ul className="list-tag__menu" role="listbox">

@@ -10,7 +10,7 @@ import { createEmptyState, type Task } from './types'
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'text'>): Task {
   return {
-    listId: 'inbox',
+    listId: 'random',
     completed: false,
     completedAt: null,
     createdAt: 1,
