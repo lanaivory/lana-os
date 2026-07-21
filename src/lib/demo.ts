@@ -1,7 +1,7 @@
 import { defaultBoardColumns } from './board'
 import { localDateKey } from './storage'
 import type { AppState, Task } from './types'
-import { DEFAULT_LISTS } from './types'
+import { DEFAULT_LISTS, LISTS_VERSION } from './types'
 
 /**
  * Seed a lively first-run board. Pure data helper — does not touch classifier/timing/rollover.
@@ -20,14 +20,14 @@ export function createDemoState(now = Date.now()): AppState {
   const tasks: Record<string, Task> = {
     d1: t({
       id: 'd1',
-      text: 'Outline newsletter intro',
-      listId: 'content',
+      text: 'Film newsletter intro',
+      listId: 'content-todo',
       time: '09:30',
     }),
     d2: t({
       id: 'd2',
       text: 'Reply to Maya about shoot dates',
-      listId: 'follow-up',
+      listId: 'follow-ups',
       time: '11:00',
     }),
     d3: t({
@@ -45,12 +45,12 @@ export function createDemoState(now = Date.now()): AppState {
     d5: t({
       id: 'd5',
       text: 'Draft script for product walkthrough',
-      listId: 'content',
+      listId: 'content-todo',
     }),
     d6: t({
       id: 'd6',
-      text: 'Call the studio to confirm Friday',
-      listId: 'follow-up',
+      text: 'Follow up with the studio about Friday',
+      listId: 'follow-ups',
     }),
     d7: t({
       id: 'd7',
@@ -64,13 +64,13 @@ export function createDemoState(now = Date.now()): AppState {
     }),
     d9: t({
       id: 'd9',
-      text: 'Skim research notes for Thursday post',
-      listId: 'reading',
+      text: 'Content idea: Thursday post angles',
+      listId: 'content-ideas',
     }),
     d10: t({
       id: 'd10',
       text: 'Something unsorted I captured mid-walk',
-      listId: 'inbox',
+      listId: 'random',
     }),
     d11: t({
       id: 'd11',
@@ -80,7 +80,7 @@ export function createDemoState(now = Date.now()): AppState {
     d12: t({
       id: 'd12',
       text: 'Ship thumbnail variants',
-      listId: 'content',
+      listId: 'content-todo',
       completed: true,
       completedAt: now - 5 * 60_000,
     }),
@@ -105,13 +105,15 @@ export function createDemoState(now = Date.now()): AppState {
     cardHeights: {},
     cardWidths: {},
     listOrders: {
-      inbox: ['d10'],
+      random: ['d10'],
       personal: ['d4'],
-      content: ['d1', 'd5', 'd12'],
-      'follow-up': ['d2', 'd6'],
+      'content-todo': ['d1', 'd5', 'd12'],
+      'follow-ups': ['d2', 'd6'],
       errands: ['d3', 'd7'],
       appointments: ['d11'],
-      reading: ['d8', 'd9'],
+      reading: ['d8'],
+      'content-ideas': ['d9'],
     },
+    listsVersion: LISTS_VERSION,
   }
 }

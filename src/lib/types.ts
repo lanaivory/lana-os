@@ -49,15 +49,31 @@ export type AppState = {
   cardWidths: Record<string, number>
   /** Explicit task order inside each context list */
   listOrders: Record<string, string[]>
+  /**
+   * Version of the canonical context-list set.
+   * Bumped when DEFAULT_LISTS changes so existing KV/local state migrates once.
+   */
+  listsVersion: number
 }
 
+/** Bump when the seeded context-list set or ids change. */
+export const LISTS_VERSION = 2
+
 export const DEFAULT_LISTS: ContextList[] = [
-  { id: 'inbox', name: 'Inbox', collapsed: false, color: '#8b919a' },
+  { id: 'linkedin-todo', name: 'LinkedIn to-do', collapsed: false, color: '#6a8caf' },
+  { id: 'instagram-todo', name: 'Instagram to-do', collapsed: false, color: '#c47a9a' },
+  { id: 'content-todo', name: 'Content to-do', collapsed: false, color: '#d4a574' },
+  { id: 'c2c-todo', name: 'C2C to-do', collapsed: false, color: '#7aa8b8' },
+  { id: 'linkedin', name: 'LinkedIn', collapsed: false, color: '#5b7fa6' },
   { id: 'personal', name: 'Personal', collapsed: false, color: '#7eb8a2' },
-  { id: 'content', name: 'Content', collapsed: false, color: '#d4a574' },
-  { id: 'follow-up', name: 'Follow-up', collapsed: false, color: '#8fa8c8' },
-  { id: 'errands', name: 'Errands', collapsed: false, color: '#c48b7a' },
+  { id: 'meta', name: 'Meta', collapsed: false, color: '#8fa8c8' },
   { id: 'appointments', name: 'Appointments', collapsed: false, color: '#c9b27c' },
+  { id: 'random', name: 'Random', collapsed: false, color: '#8b919a' },
+  { id: 'follow-ups', name: 'Follow-ups', collapsed: false, color: '#9a8fc8' },
+  { id: 'content-ideas', name: 'Content ideas', collapsed: false, color: '#c4a06a' },
+  { id: 'lovable', name: 'Lovable', collapsed: false, color: '#c48b9a' },
+  { id: 'later', name: 'Later', collapsed: false, color: '#7a8b9a' },
+  { id: 'errands', name: 'Errands', collapsed: false, color: '#c48b7a' },
   { id: 'reading', name: 'Reading', collapsed: false, color: '#a89bc8' },
 ]
 
@@ -71,14 +87,21 @@ export const PLAYLIST_META: Record<
 }
 
 export const LIST_COLORS = [
-  '#8b919a',
-  '#7eb8a2',
+  '#6a8caf',
+  '#c47a9a',
   '#d4a574',
+  '#7aa8b8',
+  '#5b7fa6',
+  '#7eb8a2',
   '#8fa8c8',
+  '#c9b27c',
+  '#8b919a',
+  '#9a8fc8',
+  '#c4a06a',
+  '#c48b9a',
+  '#7a8b9a',
   '#c48b7a',
   '#a89bc8',
-  '#c9b27c',
-  '#7aa8b8',
 ]
 
 export function createEmptyState(): AppState {
@@ -96,10 +119,14 @@ export function createEmptyState(): AppState {
     boardColumns: [
       ['today', 'tomorrow', 'week'],
       listIds.slice(0, 3),
-      listIds.slice(3),
+      listIds.slice(3, 6),
+      listIds.slice(6, 9),
+      listIds.slice(9, 12),
+      listIds.slice(12),
     ],
     cardHeights: {},
     cardWidths: {},
     listOrders: {},
+    listsVersion: LISTS_VERSION,
   }
 }

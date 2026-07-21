@@ -10,12 +10,12 @@ import {
 describe('classifyInboundTodos', () => {
   it('uses the shared splitter and classifier', () => {
     const todos = classifyInboundTodos(
-      'Book dentist checkup\nBuy milk\nEmail Alex',
+      'Book dentist checkup\nBuy milk\nReply to Alex',
     )
     expect(todos.map((t) => t.listName)).toEqual([
       'Appointments',
       'Errands',
-      'Follow-up',
+      'Follow-ups',
     ])
   })
 })
@@ -31,7 +31,7 @@ describe('buildSmsConfirmation', () => {
     expect(
       buildSmsConfirmation('Book dentist checkup\nReply to Maya'),
     ).toBe(
-      'Got it ✅\n• Book dentist checkup → Appointments\n• Reply to Maya → Follow-up',
+      'Got it ✅\n• Book dentist checkup → Appointments\n• Reply to Maya → Follow-ups',
     )
   })
 

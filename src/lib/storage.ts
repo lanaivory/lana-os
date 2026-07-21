@@ -1,7 +1,12 @@
 import { ensureBoardHasCards, defaultBoardColumns } from './board'
 import { createDemoState } from './demo'
-import { ensureBuiltinLists } from './lists'
-import { createEmptyState, type AppState, type Task } from './types'
+import { ensureBuiltinLists, migrateCanonicalLists } from './lists'
+import {
+  createEmptyState,
+  LISTS_VERSION,
+  type AppState,
+  type Task,
+} from './types'
 
 const STORAGE_KEY = 'lana-os:v1'
 
@@ -51,7 +56,7 @@ export function migrateState(state: Partial<AppState>): AppState {
     }
   }
 
-  return {
+  const base: AppState = {
     tasks,
     lists,
     playlists: {
@@ -72,7 +77,10 @@ export function migrateState(state: Partial<AppState>): AppState {
     cardHeights: state.cardHeights ?? {},
     cardWidths: state.cardWidths ?? {},
     listOrders: state.listOrders ?? {},
+    listsVersion: typeof state.listsVersion === 'number' ? state.listsVersion : 0,
   }
+
+  return migrateCanonicalLists(base)
 }
 
 export function localDateKey(date = new Date()): string {
@@ -81,3 +89,5 @@ export function localDateKey(date = new Date()): string {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+export { LISTS_VERSION }
