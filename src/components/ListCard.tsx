@@ -341,11 +341,18 @@ function SortableCardShell({
   enableWidthResize?: boolean
   insertBefore?: boolean
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({
-      id: `card:${cardId}`,
-      data: { type: 'card', cardId } satisfies CardDragData,
-    })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `card:${cardId}`,
+    data: { type: 'card', cardId } satisfies CardDragData,
+  })
 
   const cardStyle: CSSProperties = {
     ...style,
@@ -365,7 +372,11 @@ function SortableCardShell({
         className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
       >
         <header className="card__head">
-          <DragHandle attributes={attributes} listeners={listeners} />
+          <DragHandle
+            attributes={attributes}
+            listeners={listeners}
+            setActivatorRef={setActivatorNodeRef}
+          />
           {title}
         </header>
         {children}
