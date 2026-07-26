@@ -13,7 +13,6 @@ import {
 } from '../lib/cloudSync'
 import {
   completeTask,
-  deleteTaskFromState,
   purgeStaleCompletions,
   uncompleteTask,
 } from '../lib/completion'
@@ -22,7 +21,20 @@ import { splitCaptureText } from '../lib/parseCapture'
 import { applyMorningRollover } from '../lib/rollover'
 import { loadState, saveState } from '../lib/storage'
 import { routeTimingWords } from '../lib/timing'
-import type { AppState, PlaylistId, Task, ThemeMode } from '../lib/types'
+import {
+  permanentlyDeleteTrashEntry,
+  purgeExpiredTrash,
+  restoreTrashEntry,
+  softDeleteList,
+  softDeleteTask,
+} from '../lib/trash'
+import type {
+  AppState,
+  PlaylistId,
+  Task,
+  ThemeMode,
+  TrashEntry,
+} from '../lib/types'
 import { LIST_COLORS } from '../lib/types'
 
 const UNDO_LIMIT = 30
@@ -30,7 +42,7 @@ const CLOUD_SAVE_DEBOUNCE_MS = 600
 const CLOUD_POLL_MS = 12_000
 
 function withPurgeAndRollover(state: AppState): AppState {
-  return purgeStaleCompletions(applyMorningRollover(state))
+  return purgeExpiredTrash(purgeStaleCompletions(applyMorningRollover(state)))
 }
 
 function cloneState(state: AppState): AppState {
@@ -43,6 +55,13 @@ function stripFromAllPlaylists(state: AppState, taskId: string): AppState['playl
     tomorrow: state.playlists.tomorrow.filter((id) => id !== taskId),
     week: state.playlists.week.filter((id) => id !== taskId),
   }
+}
+
+/** Prefer classifier target; fall back if that list is soft-deleted. */
+function resolveActiveListId(state: AppState, preferred: string): string {
+  if (state.lists.some((l) => l.id === preferred)) return preferred
+  if (state.lists.some((l) => l.id === 'random')) return 'random'
+  return state.lists[0]?.id ?? preferred
 }
 
 export function useLanaStore() {
@@ -133,7 +152,7 @@ export function useLanaStore() {
   useEffect(() => {
     const tick = () => {
       setState((prev) => {
-        const next = purgeStaleCompletions(prev)
+        const next = purgeExpiredTrash(purgeStaleCompletions(prev))
         return next === prev ? prev : next
       })
     }
@@ -188,7 +207,8 @@ export function useLanaStore() {
         }
 
         for (const text of pieces) {
-          const { listId } = classifyTask(text)
+          const classified = classifyTask(text)
+          const listId = resolveActiveListId(prev, classified.listId)
           const { playlistId } = routeTimingWords(text)
           const id = createId()
           const task: Task = {
@@ -298,13 +318,28 @@ export function useLanaStore() {
 
   const deleteTask = useCallback(
     (taskId: string) => {
-      commit((prev) => {
-        const next = deleteTaskFromState(prev, taskId)
-        return {
-          ...next,
-          listOrders: withListOrderRemove(next.listOrders, taskId),
-        }
-      })
+      commit((prev) => softDeleteTask(prev, taskId))
+    },
+    [commit],
+  )
+
+  const deleteList = useCallback(
+    (listId: string) => {
+      commit((prev) => softDeleteList(prev, listId))
+    },
+    [commit],
+  )
+
+  const restoreFromTrash = useCallback(
+    (entry: TrashEntry) => {
+      commit((prev) => restoreTrashEntry(prev, entry))
+    },
+    [commit],
+  )
+
+  const permanentlyDeleteFromTrash = useCallback(
+    (entry: TrashEntry) => {
+      commit((prev) => permanentlyDeleteTrashEntry(prev, entry))
     },
     [commit],
   )
@@ -314,11 +349,7 @@ export function useLanaStore() {
       let next = prev
       for (const [id, task] of Object.entries(prev.tasks)) {
         if (task.completed) {
-          next = deleteTaskFromState(next, id)
-          next = {
-            ...next,
-            listOrders: withListOrderRemove(next.listOrders, id),
-          }
+          next = softDeleteTask(next, id)
         }
       }
       return next
@@ -556,7 +587,7 @@ export function useLanaStore() {
       const trimmed = text.trim()
       if (!trimmed) return
       commit((prev) => {
-        const { listId } = classifyTask(trimmed)
+        const listId = resolveActiveListId(prev, classifyTask(trimmed).listId)
         const id = createId()
         const task: Task = {
           id,
@@ -610,6 +641,9 @@ export function useLanaStore() {
     setTaskTime,
     toggleComplete,
     deleteTask,
+    deleteList,
+    restoreFromTrash,
+    permanentlyDeleteFromTrash,
     clearCompleted,
     addToPlaylist,
     removeFromPlaylist,

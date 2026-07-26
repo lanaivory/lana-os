@@ -40,6 +40,7 @@ type ContextProps = SharedProps & {
   listId: string
   onToggleCollapsed: (listId: string) => void
   onAddTask: (listId: string, text: string) => void
+  onDeleteList: (listId: string) => void
 }
 
 export function ContextListCard({
@@ -54,6 +55,7 @@ export function ContextListCard({
   onClearNew,
   onToggleCollapsed,
   onAddTask,
+  onDeleteList,
   onResizeHeight,
   taskInsertIndex = null,
 }: ContextProps) {
@@ -94,6 +96,15 @@ export function ContextListCard({
             <h2>{list.name}</h2>
           </button>
           <span className="card__count">{tasks.length}</span>
+          <button
+            type="button"
+            className="ghost danger card__delete-list"
+            title="Delete list"
+            aria-label={`Delete list ${list.name}`}
+            onClick={() => onDeleteList(list.id)}
+          >
+            ✕
+          </button>
         </>
       }
     >

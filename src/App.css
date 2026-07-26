@@ -206,12 +206,36 @@
 }
 
 .topbar__icon {
+  position: relative;
   width: 34px;
   height: 34px;
   display: grid;
   place-items: center;
   padding: 0;
   color: var(--muted);
+}
+
+.topbar__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger, #c46b6b) 85%, #000);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.topbar__btn--danger {
+  background: color-mix(in srgb, var(--danger, #c46b6b) 18%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--danger, #c46b6b) 40%, var(--line));
+  color: var(--danger, #c46b6b);
+  font-weight: 600;
 }
 
 /* Capture — fixed bottom composer */
@@ -420,6 +444,18 @@
 
 .card__head .card__count {
   margin-left: auto;
+}
+
+.card__delete-list {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  opacity: 0.55;
+}
+
+.card__delete-list:hover {
+  opacity: 1;
 }
 
 .card__toggle {
@@ -1086,6 +1122,92 @@ body.is-resizing * {
   margin: 12px 0 0;
   color: var(--faint);
   font-size: 0.82rem;
+}
+
+.modal__panel--confirm {
+  width: min(400px, 100%);
+}
+
+.modal__panel--trash {
+  width: min(520px, 100%);
+  max-height: min(80vh, 640px);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal__panel--trash .modal__body {
+  overflow: auto;
+  flex: 1;
+}
+
+.modal--nested {
+  z-index: 90;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.trash-hint {
+  margin: 0 0 12px;
+}
+
+.trash-empty {
+  margin: 18px 0;
+  color: var(--faint);
+  text-align: center;
+}
+
+.trash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trash-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.trash-item__kind {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 2px;
+}
+
+.trash-item__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.trash-item__meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.trash-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .sr-only {

@@ -34,6 +34,17 @@ describe('ensureBuiltinLists', () => {
     ])
     expect(next.find((l) => l.id === 'personal')?.collapsed).toBe(true)
   })
+
+  it('skips seed lists that are soft-deleted in trash', () => {
+    const next = ensureBuiltinLists(
+      [{ id: 'custom', name: 'Custom', collapsed: false, color: '#222' }],
+      { excludeIds: new Set(['personal', 'errands']) },
+    )
+    expect(next.map((l) => l.id)).not.toContain('personal')
+    expect(next.map((l) => l.id)).not.toContain('errands')
+    expect(next.map((l) => l.id)).toContain('random')
+    expect(next.map((l) => l.id)).toContain('custom')
+  })
 })
 
 describe('migrateCanonicalLists', () => {

@@ -11,12 +11,25 @@ const LIST_ID_ALIASES: Record<string, string> = {
 
 const FALLBACK_LIST_ID = 'random'
 
+type EnsureBuiltinOptions = {
+  /** Soft-deleted list ids — do not re-seed these while they sit in trash. */
+  excludeIds?: Set<string>
+}
+
 /** Ensure built-in lists exist (in seed order) without dropping custom ones. */
-export function ensureBuiltinLists(lists: ContextList[]): ContextList[] {
+export function ensureBuiltinLists(
+  lists: ContextList[],
+  options?: EnsureBuiltinOptions,
+): ContextList[] {
+  const exclude = options?.excludeIds ?? new Set<string>()
   const byId = new Map(lists.map((l) => [l.id, l]))
   const next: ContextList[] = []
 
   for (const def of DEFAULT_LISTS) {
+    if (exclude.has(def.id)) {
+      byId.delete(def.id)
+      continue
+    }
     const existing = byId.get(def.id)
     if (existing) {
       next.push(existing)
@@ -27,6 +40,7 @@ export function ensureBuiltinLists(lists: ContextList[]): ContextList[] {
   }
 
   for (const list of lists) {
+    if (exclude.has(list.id)) continue
     if (!DEFAULT_LISTS.some((d) => d.id === list.id)) {
       next.push(list)
     }
@@ -42,11 +56,20 @@ export function ensureBuiltinLists(lists: ContextList[]): ContextList[] {
  * - Moves tasks whose list no longer exists into Random
  * - Rebuilds board columns left-to-right in seed order
  */
-export function migrateCanonicalLists(state: AppState): AppState {
+type MigrateListsOptions = {
+  excludeListIds?: Set<string>
+}
+
+export function migrateCanonicalLists(
+  state: AppState,
+  options?: MigrateListsOptions,
+): AppState {
+  const excludeListIds = options?.excludeListIds ?? new Set<string>()
+
   if ((state.listsVersion ?? 0) >= LISTS_VERSION) {
     return {
       ...state,
-      lists: ensureBuiltinLists(state.lists),
+      lists: ensureBuiltinLists(state.lists, { excludeIds: excludeListIds }),
       listsVersion: LISTS_VERSION,
     }
   }
