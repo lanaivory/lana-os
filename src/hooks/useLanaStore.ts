@@ -18,6 +18,7 @@ import {
 } from '../lib/completion'
 import { createId } from '../lib/id'
 import { splitCaptureText } from '../lib/parseCapture'
+import { smsTaskId } from '../lib/smsTaskIds'
 import { applyMorningRollover } from '../lib/rollover'
 import { loadState, saveState } from '../lib/storage'
 import { routeTimingWords } from '../lib/timing'
@@ -193,7 +194,7 @@ export function useLanaStore() {
   }, [])
 
   const capture = useCallback(
-    (raw: string, opts?: { fromText?: boolean }) => {
+    (raw: string, opts?: { fromText?: boolean; messageSid?: string }) => {
       const pieces = splitCaptureText(raw)
       if (pieces.length === 0) return
 
@@ -206,11 +207,14 @@ export function useLanaStore() {
           week: [...prev.playlists.week],
         }
 
-        for (const text of pieces) {
+        pieces.forEach((text, index) => {
           const classified = classifyTask(text)
           const listId = resolveActiveListId(prev, classified.listId)
           const { playlistId } = routeTimingWords(text)
-          const id = createId()
+          const sid = opts?.messageSid?.trim()
+          const id = sid ? smsTaskId(sid, index) : createId()
+          // Inbox re-poll / multi-device: keep the deterministic SMS id stable.
+          if (tasks[id]) return
           const task: Task = {
             id,
             text,
@@ -227,7 +231,7 @@ export function useLanaStore() {
           if (playlistId && !playlists[playlistId].includes(id)) {
             playlists[playlistId] = [...playlists[playlistId], id]
           }
-        }
+        })
 
         return { ...prev, tasks, playlists, listOrders }
       })

@@ -1,5 +1,5 @@
 /* Lana OS service worker — cache shell + web push for text capture. */
-const CACHE = 'lana-os-shell-v2'
+const CACHE = 'lana-os-shell-v3'
 const PRECACHE = [
   '/',
   '/index.html',
@@ -56,11 +56,20 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let title = 'Lana OS'
   let body = 'Got it ✅'
+  let url = '/'
+  let taskId = undefined
+  let listId = undefined
   try {
     const data = event.data ? event.data.json() : null
     if (data && typeof data === 'object') {
       if (typeof data.title === 'string' && data.title.trim()) title = data.title
       if (typeof data.body === 'string' && data.body.trim()) body = data.body
+      if (typeof data.url === 'string' && data.url.trim()) url = data.url
+      if (typeof data.taskId === 'string' && data.taskId.trim()) taskId = data.taskId.trim()
+      if (typeof data.listId === 'string' && data.listId.trim()) listId = data.listId.trim()
+      if ((!url || url === '/') && taskId) {
+        url = `/?focus=${encodeURIComponent(taskId)}`
+      }
     }
   } catch {
     try {
@@ -76,15 +85,22 @@ self.addEventListener('push', (event) => {
       body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { url: '/' },
+      data: { url, taskId, listId },
     }),
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl =
-    (event.notification.data && event.notification.data.url) || '/'
+  const data = event.notification.data || {}
+  let targetUrl = typeof data.url === 'string' && data.url.trim() ? data.url : '/'
+  if (
+    (targetUrl === '/' || !targetUrl.includes('focus=')) &&
+    typeof data.taskId === 'string' &&
+    data.taskId.trim()
+  ) {
+    targetUrl = `/?focus=${encodeURIComponent(data.taskId.trim())}`
+  }
 
   event.waitUntil(
     (async () => {
@@ -99,7 +115,12 @@ self.addEventListener('notificationclick', (event) => {
             try {
               await client.navigate(targetUrl)
             } catch {
-              // navigate may be unsupported; focus is enough
+              // navigate may be unsupported; post a focus message as fallback
+              try {
+                client.postMessage({ type: 'lana-focus', url: targetUrl })
+              } catch {
+                // ignore
+              }
             }
           }
           return

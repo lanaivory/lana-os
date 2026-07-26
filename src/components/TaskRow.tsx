@@ -82,6 +82,7 @@ export function TaskRow({
       <article
         ref={sortable.setNodeRef}
         style={style}
+        data-task-id={task.id}
         className={[
           'task',
           compact ? 'task--compact' : '',

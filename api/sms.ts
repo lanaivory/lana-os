@@ -4,6 +4,7 @@ import {
   buildTwimlMessage,
   classifyInboundTodos,
   extractTwilioBody,
+  extractTwilioMessageSid,
 } from '../server/smsConfirm.js'
 import { sendPushToAll } from '../server/webPush.js'
 
@@ -24,12 +25,21 @@ export default async function handler(
 
   try {
     const raw = extractTwilioBody(req.body)
+    const messageSid = extractTwilioMessageSid(req.body)
     const confirmation = buildSmsConfirmation(raw)
+    const todos = classifyInboundTodos(raw, messageSid)
 
     // Notify installed PWAs; never let push failures break Twilio TwiML.
-    if (classifyInboundTodos(raw).length > 0) {
+    if (todos.length > 0) {
       try {
-        await sendPushToAll(confirmation)
+        const first = todos[0]
+        await sendPushToAll(confirmation, process.env, {}, {
+          taskId: first.taskId,
+          listId: first.listId,
+          url: first.taskId
+            ? `/?focus=${encodeURIComponent(first.taskId)}`
+            : '/',
+        })
       } catch {
         // soft-fail
       }

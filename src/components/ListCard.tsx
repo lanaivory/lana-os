@@ -369,6 +369,7 @@ function SortableCardShell({
       <section
         ref={setNodeRef}
         style={cardStyle}
+        data-card-id={cardId}
         className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
       >
         <header className="card__head">

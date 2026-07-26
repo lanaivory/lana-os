@@ -10,6 +10,7 @@ import {
   buildTwimlMessage,
   classifyInboundTodos,
   extractTwilioBody,
+  extractTwilioMessageSid,
 } from './server/smsConfirm.ts'
 import { readCloudState, writeCloudState } from './server/stateStore.ts'
 import { fetchTwilioInbox } from './server/twilioInbox.ts'
@@ -82,10 +83,19 @@ export function twilioInboxPlugin(): Plugin {
         try {
           const rawBody = await readRequestBody(req)
           const body = extractTwilioBody(rawBody)
+          const messageSid = extractTwilioMessageSid(rawBody)
           const confirmation = buildSmsConfirmation(body)
-          if (classifyInboundTodos(body).length > 0) {
+          const todos = classifyInboundTodos(body, messageSid)
+          if (todos.length > 0) {
             try {
-              await sendPushToAll(confirmation)
+              const first = todos[0]
+              await sendPushToAll(confirmation, process.env, {}, {
+                taskId: first.taskId,
+                listId: first.listId,
+                url: first.taskId
+                  ? `/?focus=${encodeURIComponent(first.taskId)}`
+                  : '/',
+              })
             } catch {
               // soft-fail
             }

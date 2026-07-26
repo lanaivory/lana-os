@@ -5,6 +5,7 @@ import {
   classifyInboundTodos,
   escapeXml,
   extractTwilioBody,
+  extractTwilioMessageSid,
 } from './smsConfirm.js'
 
 describe('classifyInboundTodos', () => {
@@ -17,6 +18,13 @@ describe('classifyInboundTodos', () => {
       'Errands',
       'Follow-ups',
     ])
+  })
+
+  it('attaches deterministic task ids when MessageSid is provided', () => {
+    const todos = classifyInboundTodos('Buy milk', 'SMabc123')
+    expect(todos).toHaveLength(1)
+    expect(todos[0].taskId).toBe('sms_SMabc123_0')
+    expect(todos[0].listId).toBe('errands')
   })
 })
 
@@ -56,5 +64,15 @@ describe('extractTwilioBody', () => {
     expect(extractTwilioBody({ Body: '  Hello  ' })).toBe('Hello')
     expect(extractTwilioBody('Body=Buy+milk&From=%2B1555')).toBe('Buy milk')
     expect(extractTwilioBody({})).toBe('')
+  })
+})
+
+describe('extractTwilioMessageSid', () => {
+  it('reads MessageSid from objects and urlencoded strings', () => {
+    expect(extractTwilioMessageSid({ MessageSid: '  SMabc  ' })).toBe('SMabc')
+    expect(
+      extractTwilioMessageSid('Body=Hi&MessageSid=SMxyz&From=%2B1555'),
+    ).toBe('SMxyz')
+    expect(extractTwilioMessageSid({})).toBe('')
   })
 })
