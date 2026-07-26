@@ -231,6 +231,8 @@ function formatCompactTime(value: string): string {
   if (!Number.isFinite(h) || !Number.isFinite(m)) return '–'
   const suffix = h < 12 ? 'a' : 'p'
   const h12 = h % 12 || 12
+  // On-the-hour → "7a"; otherwise "7:45a" — keeps the mobile chip narrow.
+  if (m === 0) return `${h12}${suffix}`
   return `${h12}:${String(m).padStart(2, '0')}${suffix}`
 }
 

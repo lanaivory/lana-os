@@ -131,22 +131,26 @@ export default function App() {
     return () => window.clearTimeout(giveUp)
   }, [pendingFocusId, checkNow])
 
+  const boardState = store.state
+  const toggleListCollapsed = store.toggleListCollapsed
+  const togglePlaylistCollapsed = store.togglePlaylistCollapsed
+
   useEffect(() => {
     if (!pendingFocusId) return
 
-    const task = store.state.tasks[pendingFocusId]
+    const task = boardState.tasks[pendingFocusId]
     if (!task) return
 
-    const cardId = cardIdForTask(store.state, pendingFocusId)
+    const cardId = cardIdForTask(boardState, pendingFocusId)
     if (cardId && isPlaylistId(cardId)) {
-      if (store.state.collapsedPlaylists[cardId]) {
-        store.togglePlaylistCollapsed(cardId)
+      if (boardState.collapsedPlaylists[cardId]) {
+        togglePlaylistCollapsed(cardId)
         return
       }
     } else if (cardId) {
-      const list = store.state.lists.find((l) => l.id === cardId)
+      const list = boardState.lists.find((l) => l.id === cardId)
       if (list?.collapsed) {
-        store.toggleListCollapsed(cardId)
+        toggleListCollapsed(cardId)
         return
       }
     }
@@ -171,9 +175,9 @@ export default function App() {
     return () => window.clearTimeout(timer)
   }, [
     pendingFocusId,
-    store.state,
-    store.toggleListCollapsed,
-    store.togglePlaylistCollapsed,
+    boardState,
+    toggleListCollapsed,
+    togglePlaylistCollapsed,
   ])
 
   useEffect(() => {
