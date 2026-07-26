@@ -187,6 +187,24 @@
   font-weight: 600;
 }
 
+.topbar__notify {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 11.5rem;
+}
+
+.topbar__notify span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__notify--on {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+}
+
 .topbar__icon {
   width: 34px;
   height: 34px;

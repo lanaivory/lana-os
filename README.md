@@ -18,7 +18,7 @@ npm run build
 
 ## Layout
 
-- Top header: title, Find (`⌘K`), Undo, Clear Completed, + New List, theme toggle, settings
+- Top header: title, Find (`⌘K`), Enable notifications, Undo, Clear Completed, + New List, theme toggle, settings
 - Multi-column masonry board of list cards
 - Capture bar pinned to the bottom (messaging-app style)
 
@@ -32,6 +32,23 @@ npm run build
 ## Installable app (PWA)
 
 Lana OS ships with a web app manifest + service worker so you can **Add to Home Screen** on a phone and open it full-screen like a native app (`standalone`, dark theme `#0b0d11`).
+
+## Web push (text capture alerts)
+
+When Twilio’s `/api/sms` webhook captures a to-do, Lana OS can send a phone notification via the Web Push API (works on an **iOS home-screen PWA** and desktop browsers that support push).
+
+| Variable | Description |
+| --- | --- |
+| `VAPID_PUBLIC_KEY` | VAPID public key (safe to expose to the client) |
+| `VAPID_PRIVATE_KEY` | VAPID private key (server only) |
+| `VAPID_SUBJECT` | Contact URI, e.g. `mailto:you@example.com` |
+
+Generate a key pair with `npx web-push generate-vapid-keys`, then add the three vars locally and in Vercel.
+
+- `GET /api/push-public-key` returns `{ publicKey }` for `PushManager.subscribe`.
+- `POST /api/push-subscribe` / `POST /api/push-unsubscribe` store or remove a browser `PushSubscription` in the Vercel KV set `lana-os-push-subs`. Both use the same `x-app-pass` gate as `/api/state`.
+- After `/api/sms` builds the confirmation (`buildSmsConfirmation`), it fans out a notification titled **Lana OS** with that same body (e.g. `Got it ✅ dentist → Appointments`). Dead endpoints (`404` / `410`) are pruned.
+- In the header, tap **Enable notifications** (user gesture required on iOS). On iPhone, install to the Home Screen first, then open from the icon before enabling.
 
 ## Cloud sync + passcode
 
@@ -78,4 +95,4 @@ For local dev, put them in a `.env` file at the project root (never commit secre
 - `GET /api/inbox` lists recent inbound SMS (`sid`, `body`, `dateSent`). If any of the three variables are missing, it returns an empty list.
 - The client polls every 2 minutes (plus a header **Check now** button for an immediate pull), runs new message bodies through capture, and stores consumed `sid`s in `localStorage` so nothing is imported twice.
 - When the endpoint responds OK, the header shows a subtle **Text capture connected** indicator.
-- `POST /api/sms` is the Twilio inbound webhook. It runs the message through the same splitter + classifier and replies with TwiML confirming each to-do and its list. It does **not** store anything — the board still fills via `/api/inbox` polling. In Twilio, set the number’s **A message comes in** webhook to `https://<your-deployment>/api/sms` using **HTTP POST**.
+- `POST /api/sms` is the Twilio inbound webhook. It runs the message through the same splitter + classifier and replies with TwiML confirming each to-do and its list. It does **not** store board tasks — the board still fills via `/api/inbox` polling — but it does send a web push (when configured) using the same confirmation text. In Twilio, set the number’s **A message comes in** webhook to `https://<your-deployment>/api/sms` using **HTTP POST**.

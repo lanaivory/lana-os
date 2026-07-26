@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
     'KV_REST_API_TOKEN',
     'KV_URL',
     'APP_PASSCODE',
+    'VAPID_PUBLIC_KEY',
+    'VAPID_PRIVATE_KEY',
+    'VAPID_SUBJECT',
   ] as const) {
     if (env[key] && !process.env[key]) {
       process.env[key] = env[key]

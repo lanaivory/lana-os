@@ -1,12 +1,19 @@
 import type { Plugin } from 'vite'
 import { assertPasscode } from './server/passcode.ts'
 import {
+  addPushSubscription,
+  parsePushSubscription,
+  removePushSubscription,
+} from './server/pushStore.ts'
+import {
   buildSmsConfirmation,
   buildTwimlMessage,
+  classifyInboundTodos,
   extractTwilioBody,
 } from './server/smsConfirm.ts'
 import { readCloudState, writeCloudState } from './server/stateStore.ts'
 import { fetchTwilioInbox } from './server/twilioInbox.ts'
+import { readVapidConfig, sendPushToAll } from './server/webPush.ts'
 import type { AppState } from './src/lib/types.ts'
 
 async function readRequestBody(req: {
@@ -37,7 +44,7 @@ function sendJson(
   res.end(JSON.stringify(body))
 }
 
-/** Dev-only middleware mirroring Vercel /api/inbox, /api/sms, /api/state. */
+/** Dev-only middleware mirroring Vercel /api/* routes. */
 export function twilioInboxPlugin(): Plugin {
   return {
     name: 'lana-twilio-inbox',
@@ -76,6 +83,13 @@ export function twilioInboxPlugin(): Plugin {
           const rawBody = await readRequestBody(req)
           const body = extractTwilioBody(rawBody)
           const confirmation = buildSmsConfirmation(body)
+          if (classifyInboundTodos(body).length > 0) {
+            try {
+              await sendPushToAll(confirmation)
+            } catch {
+              // soft-fail
+            }
+          }
           const twiml = buildTwimlMessage(confirmation)
           res.statusCode = 200
           res.setHeader('Content-Type', 'text/xml; charset=utf-8')
@@ -125,6 +139,88 @@ export function twilioInboxPlugin(): Plugin {
         res.statusCode = 405
         res.setHeader('Allow', 'GET, POST')
         sendJson(res, 405, { error: 'Method Not Allowed' })
+      })
+
+      server.middlewares.use('/api/push-public-key', async (req, res) => {
+        if (req.method && req.method !== 'GET') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'GET')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+        const vapid = readVapidConfig()
+        if (!vapid) {
+          sendJson(res, 503, { error: 'Push not configured' })
+          return
+        }
+        sendJson(res, 200, { publicKey: vapid.publicKey })
+      })
+
+      server.middlewares.use('/api/push-subscribe', async (req, res) => {
+        if (req.method && req.method !== 'POST') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'POST')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+
+        const auth = assertPasscode(req.headers['x-app-pass'])
+        if (!auth.ok) {
+          sendJson(res, auth.status, { error: auth.message })
+          return
+        }
+
+        try {
+          const raw = await readRequestBody(req)
+          const parsed = raw ? (JSON.parse(raw) as unknown) : null
+          const sub = parsePushSubscription(parsed)
+          if (!sub) {
+            sendJson(res, 400, { error: 'Expected PushSubscription JSON' })
+            return
+          }
+          const saved = await addPushSubscription(sub)
+          sendJson(res, 200, { ok: true, saved })
+        } catch {
+          sendJson(res, 500, { error: 'Failed to save subscription' })
+        }
+      })
+
+      server.middlewares.use('/api/push-unsubscribe', async (req, res) => {
+        if (req.method && req.method !== 'POST') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'POST')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+
+        const auth = assertPasscode(req.headers['x-app-pass'])
+        if (!auth.ok) {
+          sendJson(res, auth.status, { error: auth.message })
+          return
+        }
+
+        try {
+          const raw = await readRequestBody(req)
+          const parsed = raw ? (JSON.parse(raw) as unknown) : null
+          const sub = parsePushSubscription(parsed)
+          const endpoint =
+            sub?.endpoint ??
+            (parsed &&
+            typeof parsed === 'object' &&
+            typeof (parsed as { endpoint?: unknown }).endpoint === 'string'
+              ? (parsed as { endpoint: string }).endpoint.trim()
+              : '')
+          if (!endpoint) {
+            sendJson(res, 400, {
+              error: 'Expected PushSubscription or endpoint',
+            })
+            return
+          }
+          const removed = await removePushSubscription(sub ?? endpoint)
+          sendJson(res, 200, { ok: true, removed })
+        } catch {
+          sendJson(res, 500, { error: 'Failed to remove subscription' })
+        }
       })
     },
   }
