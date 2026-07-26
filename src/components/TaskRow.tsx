@@ -114,15 +114,17 @@ export function TaskRow({
           </button>
 
           {showTime && (
-            <input
-              type="time"
-              className="task__time"
-              value={task.time ?? ''}
-              onChange={(e) => onTimeChange?.(task.id, e.target.value || null)}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Optional time"
-            />
+            <div className="task__time-wrap">
+              <input
+                type="time"
+                className="task__time"
+                value={task.time ?? ''}
+                onChange={(e) => onTimeChange?.(task.id, e.target.value || null)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Optional time"
+              />
+            </div>
           )}
 
           <div className="task__main">

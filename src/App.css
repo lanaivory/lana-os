@@ -806,10 +806,23 @@ body.is-resizing * {
   color: var(--accent-2);
 }
 
-.task__time {
+/* Clip iOS Safari's oversized native time control so it cannot
+   starve the title column (which then wraps one letter per line). */
+.task__time-wrap {
   flex: 0 0 auto;
-  width: 92px;
+  width: 5.75rem;
+  max-width: 5.75rem;
+  min-width: 0;
   margin-top: 1px;
+  overflow: hidden;
+}
+
+.task__time {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: color-mix(in srgb, var(--bg) 55%, transparent);
@@ -820,13 +833,20 @@ body.is-resizing * {
   color-scheme: dark;
 }
 
+.task__time::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+  width: 0.9rem;
+}
+
 .theme-light .task__time {
   color-scheme: light;
 }
 
 .task__main {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 0%;
+  /* Keep a real title column even when time + tag are present */
+  min-width: 6.5rem;
 }
 
 .task__text {
@@ -835,8 +855,8 @@ body.is-resizing * {
   line-height: 1.4;
   white-space: normal;
   overflow: visible;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
   text-overflow: unset;
 }
 
@@ -874,11 +894,15 @@ body.is-resizing * {
 
 .list-tag {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 6.5rem;
   margin-top: 1px;
 }
 
 .list-tag__btn {
+  display: block;
+  width: 100%;
   border: 0;
   background: color-mix(in srgb, var(--tag, var(--muted)) 18%, transparent);
   color: var(--tag, var(--muted));
@@ -890,7 +914,7 @@ body.is-resizing * {
   border-radius: 5px;
   cursor: pointer;
   white-space: nowrap;
-  max-width: 110px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1225,19 +1249,196 @@ body.is-resizing * {
   .topbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .topbar__brand {
+    gap: 8px;
+  }
+
+  .topbar__textcap {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .topbar__actions {
+    flex-wrap: nowrap;
     justify-content: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .topbar__actions::-webkit-scrollbar {
+    display: none;
   }
 
   .topbar__find {
-    flex: 1;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: 9.5rem;
+    width: min(12.5rem, 52vw);
+  }
+
+  .topbar__find kbd {
+    display: none;
+  }
+
+  .topbar__btn,
+  .topbar__icon,
+  .topbar__notify {
+    flex: 0 0 auto;
+  }
+
+  .topbar__btn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .topbar__icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .topbar__notify {
+    max-width: none;
+    min-height: 40px;
+  }
+
+  .board {
+    padding: 12px 14px calc(104px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-inline: 14px;
   }
 
   .board__col {
-    flex-basis: 270px;
-    width: 270px;
+    flex-basis: min(340px, calc(100vw - 36px)) !important;
+    width: min(340px, calc(100vw - 36px)) !important;
+    max-width: calc(100vw - 36px);
+    padding: 8px;
+    gap: 14px;
+  }
+
+  .board__gap {
+    flex-basis: 10px;
+    width: 10px;
+  }
+
+  /* Ignore saved desktop card widths on narrow viewports */
+  .board__col .card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  .width-handle {
+    display: none;
+  }
+
+  .resize-handle {
+    height: 18px;
+    margin: 2px 10px 6px;
+  }
+
+  .resize-handle::after {
+    top: 7px;
+    height: 4px;
+  }
+
+  .card__head {
+    gap: 10px;
+    padding: 12px 12px 10px 10px;
+  }
+
+  .card__drag {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .card__body {
+    padding: 8px 10px 6px;
+  }
+
+  .card__today-meta {
+    padding: 2px 14px 12px;
+  }
+
+  .task-stack {
+    gap: 8px;
+  }
+
+  .task {
+    padding: 10px 12px;
+  }
+
+  .task--compact {
+    padding: 9px 10px;
+    min-height: 44px;
+  }
+
+  .task__row {
+    gap: 8px;
+    align-items: center;
+  }
+
+  .task__check {
+    flex-basis: 22px;
+    width: 22px;
+    height: 22px;
+    margin-top: 0;
+    border-radius: 6px;
+  }
+
+  .task__time-wrap {
+    width: 5.5rem;
+    max-width: 5.5rem;
+    margin-top: 0;
+  }
+
+  .task__main {
+    min-width: 7rem;
+  }
+
+  .list-tag {
+    max-width: 5.75rem;
+    margin-top: 0;
+  }
+
+  .list-tag__btn {
+    min-height: 28px;
+    padding: 4px 8px;
+  }
+
+  .task__actions {
+    opacity: 1;
+  }
+
+  .ghost {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
+  }
+
+  .add-row {
+    padding: 12px 12px;
+    font-size: 0.88rem;
+  }
+
+  .capture {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .capture__shell {
+    padding: 12px 12px 12px 14px;
+  }
+
+  .capture__go {
+    min-height: 40px;
+    padding: 10px 14px;
   }
 }
