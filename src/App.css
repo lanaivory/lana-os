@@ -321,6 +321,9 @@
   padding: 10px 12px calc(96px + env(safe-area-inset-bottom, 0px));
   overflow-x: auto;
   overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
 }
 
 .board__col-wrap {
@@ -556,6 +559,8 @@
 .card__scroll {
   overflow: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .card__body.is-task-over {
@@ -725,6 +730,7 @@ body.is-resizing * {
   border: 1px solid transparent;
   background: color-mix(in srgb, var(--text) 2%, transparent);
   cursor: grab;
+  touch-action: pan-x pan-y;
   transition: background 120ms ease, border-color 120ms ease, transform 160ms cubic-bezier(.2,.8,.2,1);
 }
 
@@ -742,6 +748,35 @@ body.is-resizing * {
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   box-shadow: var(--shadow);
   background: var(--bg-card-2);
+}
+
+.task__drag {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: grab;
+  user-select: none;
+  padding: 0;
+  touch-action: none;
+  opacity: 0.7;
+  transition: color 120ms ease, background 120ms ease, opacity 120ms ease;
+}
+
+.task__drag:hover {
+  color: var(--text);
+  opacity: 1;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.task__drag:active {
+  cursor: grabbing;
 }
 
 .task--overlay {
@@ -809,12 +844,17 @@ body.is-resizing * {
 /* Clip iOS Safari's oversized native time control so it cannot
    starve the title column (which then wraps one letter per line). */
 .task__time-wrap {
+  position: relative;
   flex: 0 0 auto;
   width: 5.75rem;
   max-width: 5.75rem;
   min-width: 0;
   margin-top: 1px;
   overflow: hidden;
+}
+
+.task__time-pill {
+  display: none;
 }
 
 .task__time {
@@ -1311,21 +1351,32 @@ body.is-resizing * {
   }
 
   .board {
-    padding: 12px 14px calc(104px + env(safe-area-inset-bottom, 0px));
-    scroll-padding-inline: 14px;
+    padding: 8px 10px calc(96px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-inline: 10px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
 
+  .board::-webkit-scrollbar {
+    display: none;
+  }
+
+  .board__col-wrap {
+    scroll-snap-align: start;
+  }
+
+  /* Leave a peek of the next column; swipe to reach it */
   .board__col {
-    flex-basis: min(340px, calc(100vw - 36px)) !important;
-    width: min(340px, calc(100vw - 36px)) !important;
-    max-width: calc(100vw - 36px);
-    padding: 8px;
-    gap: 14px;
+    flex-basis: min(318px, calc(100vw - 42px)) !important;
+    width: min(318px, calc(100vw - 42px)) !important;
+    max-width: calc(100vw - 42px);
+    padding: 3px;
+    gap: 8px;
   }
 
   .board__gap {
-    flex-basis: 10px;
-    width: 10px;
+    flex-basis: 6px;
+    width: 6px;
   }
 
   /* Ignore saved desktop card widths on narrow viewports */
@@ -1340,93 +1391,181 @@ body.is-resizing * {
   }
 
   .resize-handle {
-    height: 18px;
-    margin: 2px 10px 6px;
+    height: 16px;
+    margin: 0 8px 4px;
   }
 
   .resize-handle::after {
-    top: 7px;
-    height: 4px;
+    top: 6px;
+    height: 3px;
   }
 
   .card__head {
-    gap: 10px;
-    padding: 12px 12px 10px 10px;
+    gap: 6px;
+    padding: 8px 8px 6px 6px;
+  }
+
+  .card__toggle h2 {
+    font-size: 0.9rem;
   }
 
   .card__drag {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
   }
 
   .card__body {
-    padding: 8px 10px 6px;
+    padding: 3px 5px 2px;
+  }
+
+  .card__scroll {
+    overflow-x: hidden;
   }
 
   .card__today-meta {
-    padding: 2px 14px 12px;
+    padding: 0 10px 8px;
+  }
+
+  .card__clock {
+    font-size: 1.3rem;
+  }
+
+  .card__empty {
+    padding: 14px 8px;
+    font-size: 0.78rem;
   }
 
   .task-stack {
-    gap: 8px;
+    gap: 3px;
+  }
+
+  .task-stack--compact {
+    gap: 2px;
   }
 
   .task {
-    padding: 10px 12px;
+    padding: 4px 5px;
+    border-radius: 8px;
   }
 
   .task--compact {
-    padding: 9px 10px;
-    min-height: 44px;
+    padding: 3px 5px;
+    min-height: 0;
   }
 
   .task__row {
-    gap: 8px;
+    gap: 4px;
     align-items: center;
   }
 
-  .task__check {
-    flex-basis: 22px;
+  .task__drag {
     width: 22px;
-    height: 22px;
-    margin-top: 0;
-    border-radius: 6px;
+    height: 28px;
+    opacity: 0.8;
   }
 
-  .task__time-wrap {
-    width: 5.5rem;
-    max-width: 5.5rem;
+  .task__check {
+    flex-basis: 18px;
+    width: 18px;
+    height: 18px;
     margin-top: 0;
+    border-radius: 5px;
+  }
+
+  /* Compact time pill — frees horizontal room for the title */
+  .task__time-wrap {
+    width: auto;
+    max-width: none;
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .task__time-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.15rem;
+    max-width: 2.85rem;
+    min-height: 26px;
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.62rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .task__time-pill:hover,
+  .task__time-pill:focus-visible {
+    color: var(--text);
+    border-color: var(--line-strong);
+  }
+
+  .task__time {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
   }
 
   .task__main {
-    min-width: 7rem;
+    flex: 1 1 0%;
+    min-width: 5.5rem;
+  }
+
+  .task__text {
+    font-size: 0.8rem;
+    line-height: 1.22;
   }
 
   .list-tag {
-    max-width: 5.75rem;
+    max-width: 3.6rem;
     margin-top: 0;
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
   .list-tag__btn {
-    min-height: 28px;
-    padding: 4px 8px;
+    min-height: 24px;
+    padding: 2px 5px;
+    font-size: 0.6rem;
   }
 
   .task__actions {
     opacity: 1;
   }
 
+  .task__link {
+    flex-basis: 26px;
+    width: 26px;
+    height: 26px;
+  }
+
   .ghost {
-    min-width: 32px;
-    min-height: 32px;
-    padding: 6px;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 3px;
+    font-size: 0.68rem;
   }
 
   .add-row {
-    padding: 12px 12px;
-    font-size: 0.88rem;
+    width: calc(100% - 8px);
+    margin: 2px 4px 6px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
   }
 
   .capture {

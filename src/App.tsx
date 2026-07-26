@@ -2,7 +2,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useSensor,
   useSensors,
@@ -56,8 +57,12 @@ export default function App() {
   >(null)
   const [now, setNow] = useState(() => new Date())
 
+  // Mouse: short distance drag from handles (and task rows via mouse-only listeners).
+  // Touch: TouchSensor listeners are only attached on drag handles, so a normal
+  // swipe on a card/task body scrolls the board; drag starts from the handle.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),

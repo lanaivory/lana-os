@@ -42,6 +42,7 @@ export function ListTag({ lists, listId, onChange, onOpen }: Props) {
           setOpen((v) => !v)
         }}
         onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         aria-haspopup="listbox"
         aria-expanded={open}
         title="Change list"
