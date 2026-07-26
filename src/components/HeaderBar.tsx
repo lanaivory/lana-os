@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { NotifyBell } from './NotifyBell'
 
 type Props = {
   query: string
@@ -92,6 +93,8 @@ export function HeaderBar({
             {textCaptureChecking ? 'Checking…' : 'Check now'}
           </button>
         )}
+
+        <NotifyBell />
 
         <button
           type="button"
