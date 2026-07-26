@@ -17,6 +17,7 @@ type Props = {
   insertion: InsertionState
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onDeleteList: (listId: string) => void
   onListChange: (id: string, listId: string) => void
   onClearNew: (id: string) => void
   onTimeChange: (id: string, time: string | null) => void
@@ -37,6 +38,7 @@ export function Board({
   insertion,
   onToggle,
   onDelete,
+  onDeleteList,
   onListChange,
   onClearNew,
   onTimeChange,
@@ -112,6 +114,7 @@ export function Board({
                       taskInsertIndex={taskInsertIndex}
                       onToggle={onToggle}
                       onDelete={onDelete}
+                      onDeleteList={onDeleteList}
                       onListChange={onListChange}
                       onClearNew={onClearNew}
                       onToggleCollapsed={onToggleListCollapsed}

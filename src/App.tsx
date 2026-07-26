@@ -14,8 +14,10 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Board } from './components/Board'
 import { CaptureBar } from './components/CaptureBar'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { HeaderBar } from './components/HeaderBar'
 import type { InsertionState } from './components/InsertionLine'
+import { RecentlyDeletedModal } from './components/RecentlyDeletedModal'
 import { SettingsModal } from './components/SettingsModal'
 import { useLanaStore } from './hooks/useLanaStore'
 import { useTwilioInbox } from './hooks/useTwilioInbox'
@@ -46,6 +48,12 @@ export default function App() {
   const [active, setActive] = useState<ActiveDrag>(null)
   const [insertion, setInsertion] = useState<InsertionState>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [trashOpen, setTrashOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<
+    | { kind: 'task'; taskId: string; text: string }
+    | { kind: 'list'; listId: string; name: string; taskCount: number }
+    | null
+  >(null)
   const [now, setNow] = useState(() => new Date())
 
   const sensors = useSensors(
@@ -235,6 +243,33 @@ export default function App() {
     store.createList(name)
   }
 
+  const requestDeleteTask = (taskId: string) => {
+    const task = store.state.tasks[taskId]
+    if (!task) return
+    setConfirmDelete({ kind: 'task', taskId, text: task.text })
+  }
+
+  const requestDeleteList = (listId: string) => {
+    const list = store.state.lists.find((l) => l.id === listId)
+    if (!list) return
+    const taskCount = Object.values(store.state.tasks).filter(
+      (t) => t.listId === listId,
+    ).length
+    setConfirmDelete({
+      kind: 'list',
+      listId,
+      name: list.name,
+      taskCount,
+    })
+  }
+
+  const confirmDeleteMessage =
+    confirmDelete?.kind === 'task'
+      ? `Move “${confirmDelete.text}” to Recently Deleted? You can restore it for 24 hours.`
+      : confirmDelete?.kind === 'list'
+        ? `Move “${confirmDelete.name}” to Recently Deleted? This also removes its ${confirmDelete.taskCount} task${confirmDelete.taskCount === 1 ? '' : 's'}. You can restore the list and its tasks for 24 hours.`
+        : ''
+
   return (
     <div className={`os theme-${store.state.theme}`}>
       <HeaderBar
@@ -248,6 +283,8 @@ export default function App() {
         theme={store.state.theme}
         onToggleTheme={store.toggleTheme}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenTrash={() => setTrashOpen(true)}
+        trashCount={store.state.trash.length}
         textCaptureConnected={textCaptureConnected}
         textCaptureChecking={textCaptureChecking}
         onCheckTexts={checkNow}
@@ -271,7 +308,8 @@ export default function App() {
           liveDate={liveDate}
           insertion={insertion}
           onToggle={store.toggleComplete}
-          onDelete={store.deleteTask}
+          onDelete={requestDeleteTask}
+          onDeleteList={requestDeleteList}
           onListChange={store.setTaskList}
           onClearNew={store.clearNew}
           onTimeChange={store.setTaskTime}
@@ -302,6 +340,33 @@ export default function App() {
       <CaptureBar onCapture={store.capture} />
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <RecentlyDeletedModal
+        open={trashOpen}
+        trash={store.state.trash}
+        onClose={() => setTrashOpen(false)}
+        onRestore={store.restoreFromTrash}
+        onDeletePermanently={store.permanentlyDeleteFromTrash}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete != null}
+        title={
+          confirmDelete?.kind === 'list' ? 'Delete list?' : 'Delete task?'
+        }
+        message={confirmDeleteMessage}
+        confirmLabel="Move to Recently Deleted"
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (!confirmDelete) return
+          if (confirmDelete.kind === 'task') {
+            store.deleteTask(confirmDelete.taskId)
+          } else {
+            store.deleteList(confirmDelete.listId)
+          }
+          setConfirmDelete(null)
+        }}
+      />
     </div>
   )
 }

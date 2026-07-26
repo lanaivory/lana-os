@@ -11,6 +11,8 @@ type Props = {
   theme: 'dark' | 'light'
   onToggleTheme: () => void
   onOpenSettings: () => void
+  onOpenTrash: () => void
+  trashCount?: number
   textCaptureConnected?: boolean
   textCaptureChecking?: boolean
   onCheckTexts?: () => void
@@ -27,6 +29,8 @@ export function HeaderBar({
   theme,
   onToggleTheme,
   onOpenSettings,
+  onOpenTrash,
+  trashCount = 0,
   textCaptureConnected = false,
   textCaptureChecking = false,
   onCheckTexts,
@@ -146,6 +150,36 @@ export function HeaderBar({
                 fill="currentColor"
               />
             </svg>
+          )}
+        </button>
+
+        <button
+          type="button"
+          className="topbar__icon"
+          onClick={onOpenTrash}
+          aria-label="Recently Deleted"
+          title="Recently Deleted"
+        >
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+            <path
+              d="M7.2 3.2h5.6l.6 1.6H17v1.4H3V4.8h3.6l.6-1.6zM4.4 7.2h11.2l-.8 9.2a1.4 1.4 0 0 1-1.4 1.3H6.6a1.4 1.4 0 0 1-1.4-1.3L4.4 7.2z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8 9.2v5.6M12 9.2v5.6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+          {trashCount > 0 && (
+            <span className="topbar__badge" aria-hidden>
+              {trashCount > 99 ? '99+' : trashCount}
+            </span>
           )}
         </button>
 

@@ -30,6 +30,33 @@ export type Playlists = {
   week: string[]
 }
 
+/** Soft-deleted task kept in Recently Deleted for 24 hours. */
+export type TrashTaskEntry = {
+  kind: 'task'
+  deletedAt: number
+  task: Task
+  /** Playlist memberships at delete time (Today / Tomorrow / This Week). */
+  playlists: PlaylistId[]
+  /** Index within the owning list's order at delete time. */
+  listOrderIndex: number
+}
+
+/** Soft-deleted list kept with its tasks for joint restore. */
+export type TrashListEntry = {
+  kind: 'list'
+  deletedAt: number
+  list: ContextList
+  tasks: Array<{
+    task: Task
+    playlists: PlaylistId[]
+  }>
+  listOrder: string[]
+  boardColumn: number
+  boardIndex: number
+}
+
+export type TrashEntry = TrashTaskEntry | TrashListEntry
+
 export type AppState = {
   tasks: Record<string, Task>
   lists: ContextList[]
@@ -54,6 +81,8 @@ export type AppState = {
    * Bumped when DEFAULT_LISTS changes so existing KV/local state migrates once.
    */
   listsVersion: number
+  /** Soft-deleted tasks/lists retained for 24 hours. */
+  trash: TrashEntry[]
 }
 
 /** Bump when the seeded context-list set or ids change. */
@@ -128,5 +157,6 @@ export function createEmptyState(): AppState {
     cardWidths: {},
     listOrders: {},
     listsVersion: LISTS_VERSION,
+    trash: [],
   }
 }

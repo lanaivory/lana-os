@@ -115,5 +115,6 @@ export function createDemoState(now = Date.now()): AppState {
       'content-ideas': ['d9'],
     },
     listsVersion: LISTS_VERSION,
+    trash: [],
   }
 }
