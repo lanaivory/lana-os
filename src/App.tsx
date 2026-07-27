@@ -34,6 +34,7 @@ import {
   readFocusTaskId,
   scrollTaskIntoBoardView,
 } from './lib/focusTask'
+import { cardNeedsExpand, findFirstSearchMatch } from './lib/searchNav'
 import type { PlaylistId } from './lib/types'
 import './App.css'
 
@@ -56,6 +57,7 @@ export default function App() {
   const [insertion, setInsertion] = useState<InsertionState>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [boardZoomOut, setBoardZoomOut] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<
     | { kind: 'task'; taskId: string; text: string }
     | { kind: 'list'; listId: string; name: string; taskCount: number }
@@ -195,6 +197,51 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [store])
+
+  // Find → navigate: scroll the matching task's column into view and highlight it.
+  // Re-runs when the query changes or when a collapsed card was expanded for the match.
+  const searchNavKey = (() => {
+    const q = deferredQuery.trim()
+    if (!q) return ''
+    const match = findFirstSearchMatch(boardState, q)
+    if (!match) return q
+    const expand = cardNeedsExpand(boardState, match.cardId)
+    return `${q}|${match.taskId}|${expand ? 'collapsed' : 'open'}`
+  })()
+
+  useEffect(() => {
+    const q = deferredQuery.trim()
+    if (!q) return
+
+    const match = findFirstSearchMatch(boardState, q)
+    if (!match) return
+
+    const expand = cardNeedsExpand(boardState, match.cardId)
+    if (expand?.kind === 'playlist') {
+      togglePlaylistCollapsed(expand.id as PlaylistId)
+      return
+    }
+    if (expand?.kind === 'list') {
+      toggleListCollapsed(expand.id)
+      return
+    }
+
+    let attempts = 0
+    let timer = 0
+    const tryScroll = () => {
+      attempts += 1
+      if (scrollTaskIntoBoardView(match.taskId, { highlightMs: 2600 })) return
+      if (attempts < 10) timer = window.setTimeout(tryScroll, 70)
+    }
+    timer = window.setTimeout(tryScroll, 40)
+    return () => window.clearTimeout(timer)
+  }, [
+    searchNavKey,
+    deferredQuery,
+    boardState,
+    toggleListCollapsed,
+    togglePlaylistCollapsed,
+  ])
 
   const liveClock = useMemo(
     () =>
@@ -383,7 +430,16 @@ export default function App() {
         : ''
 
   return (
-    <div className={`os theme-${store.state.theme}`}>
+    <div
+      className={[
+        'os',
+        `theme-${store.state.theme}`,
+        store.state.wrapTaskTitles ? '' : 'os--nowrap-titles',
+        boardZoomOut ? 'os--zoom-out' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <HeaderBar
         query={query}
         onQueryChange={setQuery}
@@ -398,8 +454,8 @@ export default function App() {
         onOpenTrash={() => setTrashOpen(true)}
         trashCount={store.state.trash.length}
         textCaptureConnected={textCaptureConnected}
-        textCaptureChecking={textCaptureChecking}
-        onCheckTexts={checkNow}
+        boardZoomOut={boardZoomOut}
+        onToggleBoardZoom={() => setBoardZoomOut((v) => !v)}
       />
 
       <DndContext
@@ -451,7 +507,15 @@ export default function App() {
 
       <CaptureBar onCapture={store.capture} />
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        wrapTaskTitles={store.state.wrapTaskTitles}
+        onWrapTaskTitlesChange={store.setWrapTaskTitles}
+        textCaptureConnected={textCaptureConnected}
+        textCaptureChecking={textCaptureChecking}
+        onCheckTexts={checkNow}
+      />
 
       <RecentlyDeletedModal
         open={trashOpen}

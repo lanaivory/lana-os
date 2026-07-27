@@ -100,6 +100,7 @@ export function createDemoState(now = Date.now()): AppState {
     collapsedPlaylists: { today: false, tomorrow: false, week: false },
     theme: 'dark',
     sortTodayByTime: false,
+    wrapTaskTitles: true,
     seeded: true,
     boardColumns: defaultBoardColumns(lists.map((l) => l.id)),
     cardHeights: {},

@@ -51,7 +51,7 @@ export function Board({
   onResizeWidth,
 }: Props) {
   return (
-    <div className="board" aria-label="Lana OS board">
+    <div className="board" aria-label="Lana OS board" data-board>
       <ColumnGap index={0} active={insertion?.kind === 'column' && insertion.index === 0} />
 
       {state.boardColumns.map((column, colIndex) => {

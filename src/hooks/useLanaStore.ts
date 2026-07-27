@@ -177,6 +177,8 @@ export function useLanaStore() {
     const prev = stateRef.current
     const next = updater(prev)
     if (next === prev) return
+    // Block cloud poll from overwriting before the save effect marks pending.
+    pendingCloudSave.current = true
     setUndoStack((stack) => {
       const stacked = [...stack, cloneState(prev)]
       return stacked.length > UNDO_LIMIT ? stacked.slice(-UNDO_LIMIT) : stacked
@@ -634,6 +636,10 @@ export function useLanaStore() {
     setState((prev) => ({ ...prev, sortTodayByTime }))
   }, [])
 
+  const setWrapTaskTitles = useCallback((wrapTaskTitles: boolean) => {
+    setState((prev) => ({ ...prev, wrapTaskTitles }))
+  }, [])
+
   return {
     state,
     canUndo: undoStack.length > 0,
@@ -668,5 +674,6 @@ export function useLanaStore() {
     setTheme,
     toggleTheme,
     setSortTodayByTime,
+    setWrapTaskTitles,
   }
 }

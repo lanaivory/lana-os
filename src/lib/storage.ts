@@ -78,6 +78,8 @@ export function migrateState(state: Partial<AppState>): AppState {
     },
     theme: state.theme === 'light' ? 'light' : 'dark',
     sortTodayByTime: Boolean(state.sortTodayByTime),
+    wrapTaskTitles:
+      typeof state.wrapTaskTitles === 'boolean' ? state.wrapTaskTitles : true,
     seeded: Boolean(state.seeded),
     boardColumns,
     cardHeights: state.cardHeights ?? {},

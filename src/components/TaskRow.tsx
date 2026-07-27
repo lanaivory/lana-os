@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import type { ContextList, Task } from '../lib/types'
-import { extractUrl } from '../lib/urls'
+import { displayTextWithoutUrl, extractUrl } from '../lib/urls'
 import { HighlightedText } from './HighlightedText'
 import { ListTag } from './ListTag'
 
@@ -24,6 +24,7 @@ type Props = {
   compact?: boolean
   showTime?: boolean
   showListTag?: boolean
+  searchMatch?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onTimeChange?: (id: string, time: string | null) => void
@@ -42,6 +43,7 @@ export function TaskRow({
   compact = false,
   showTime = false,
   showListTag = true,
+  searchMatch = false,
   onToggle,
   onDelete,
   onTimeChange,
@@ -69,6 +71,7 @@ export function TaskRow({
   }
 
   const url = extractUrl(task.text)
+  const displayText = url ? displayTextWithoutUrl(task.text) : task.text
 
   // Desktop: keep whole-row mouse drag. Touch listeners stay on the handle only
   // so swipes scroll the board instead of grabbing the task.
@@ -89,6 +92,7 @@ export function TaskRow({
           task.completed ? 'is-done' : '',
           task.overdue && !task.completed ? 'is-overdue' : '',
           task.isNew ? 'is-new' : '',
+          searchMatch ? 'is-search-match' : '',
           sortable.isDragging ? 'is-dragging' : '',
         ]
           .filter(Boolean)
@@ -153,22 +157,15 @@ export function TaskRow({
 
           <div className="task__main">
             <p className="task__text">
-              <HighlightedText text={task.text} query={query} />
+              {displayText ? (
+                <HighlightedText text={displayText} query={query} />
+              ) : null}
               {task.isNew && <span className="badge badge--new">NEW</span>}
               {task.overdue && !task.completed && (
                 <span className="badge badge--overdue">OVERDUE</span>
               )}
             </p>
           </div>
-
-          {showListTag && (
-            <ListTag
-              lists={lists}
-              listId={task.listId}
-              onChange={(listId) => onListChange(task.id, listId)}
-              onOpen={() => onClearNew(task.id)}
-            />
-          )}
 
           {url && (
             <a
@@ -177,29 +174,39 @@ export function TaskRow({
               target="_blank"
               rel="noreferrer"
               title="Open link"
+              aria-label="Open link"
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
-              <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
                 <path
-                  d="M6.2 9.8a2.6 2.6 0 0 1 0-3.7l1.4-1.4a2.6 2.6 0 1 1 3.7 3.7L10.5 9.2"
+                  d="M7.2 11.4a3.4 3.4 0 0 1 0-4.8l1.8-1.8a3.4 3.4 0 1 1 4.8 4.8l-1 1"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.55"
+                  strokeWidth="1.85"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
-                  d="M9.8 6.2a2.6 2.6 0 0 1 0 3.7L8.4 11.3a2.6 2.6 0 1 1-3.7-3.7L5.5 6.8"
+                  d="M12.8 8.6a3.4 3.4 0 0 1 0 4.8l-1.8 1.8a3.4 3.4 0 1 1-4.8-4.8l1-1"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.55"
+                  strokeWidth="1.85"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
             </a>
+          )}
+
+          {showListTag && (
+            <ListTag
+              lists={lists}
+              listId={task.listId}
+              onChange={(listId) => onListChange(task.id, listId)}
+              onOpen={() => onClearNew(task.id)}
+            />
           )}
 
           <div
