@@ -21,7 +21,7 @@ function labelFor(state: PushUiState): string {
 function titleFor(state: PushUiState): string {
   switch (state) {
     case 'enabled':
-      return 'Web push enabled — you will get a phone alert when a text is captured'
+      return 'Web push enabled — you will get a phone alert naming the list when a text is captured'
     case 'denied':
       return 'Notifications are blocked. Enable them in system Settings for this app.'
     case 'needs-install':
@@ -31,7 +31,7 @@ function titleFor(state: PushUiState): string {
     case 'busy':
       return 'Working…'
     default:
-      return 'Enable phone notifications when a to-do is captured from a text'
+      return 'Enable phone notifications that name the list when a to-do is captured from a text'
   }
 }
 

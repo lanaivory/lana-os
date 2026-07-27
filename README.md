@@ -18,7 +18,8 @@ npm run build
 
 ## Layout
 
-- Top header: title, Find (`⌘K`), Enable notifications, Undo, Clear Completed, + New List, theme toggle, settings
+- Top header: title, Find (`⌘K`), Undo, Clear Completed, + New List, theme toggle, settings
+- Settings: Enable notifications, Check now (text capture), wrap titles
 - Multi-column masonry board of list cards
 - Capture bar pinned to the bottom (messaging-app style)
 
@@ -47,8 +48,9 @@ Generate a key pair with `npx web-push generate-vapid-keys`, then add the three 
 
 - `GET /api/push-public-key` returns `{ publicKey }` for `PushManager.subscribe`.
 - `POST /api/push-subscribe` / `POST /api/push-unsubscribe` store or remove a browser `PushSubscription` in the Vercel KV set `lana-os-push-subs`. Both use the same `x-app-pass` gate as `/api/state`.
-- After `/api/sms` builds the confirmation (`buildSmsConfirmation`), it fans out a notification titled **Lana OS** with that same body (e.g. `Got it ✅ dentist → Appointments`). Dead endpoints (`404` / `410`) are pruned.
-- In the header, tap **Enable notifications** (user gesture required on iOS). On iPhone, install to the Home Screen first, then open from the icon before enabling.
+- After `/api/sms` classifies the text, it fans out a web push via `buildPushConfirmation`: title **Added to \<List\>** (e.g. `Added to Appointments`) with the task title as the body. Several to-dos use title **Added to your lists** and bullet lines `title → List`. Dead endpoints (`404` / `410`) are pruned.
+- SMS still replies with TwiML from `buildSmsConfirmation` (e.g. `Got it ✅ dentist → Appointments`).
+- In **Settings → Notifications**, tap **Enable notifications** (user gesture required on iOS). On iPhone, install to the Home Screen first, then open from the icon before enabling. Opening the app re-syncs an existing subscription to KV.
 
 ## Cloud sync + passcode
 

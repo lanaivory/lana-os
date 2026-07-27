@@ -35,8 +35,8 @@ export function SettingsModal({
           <section className="settings-section">
             <h3 className="settings-section__title">Notifications</h3>
             <p className="settings-section__desc">
-              Get a phone alert when a to-do is captured from a text. Once enabled,
-              it stays on.
+              Get a phone alert naming which list a texted to-do landed in. Once
+              enabled, it stays on.
             </p>
             <NotifyBell variant="settings" />
           </section>

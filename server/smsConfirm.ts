@@ -65,6 +65,52 @@ export function buildSmsConfirmation(raw: string): string {
   return ['Got it ✅', ...lines].join('\n')
 }
 
+/** Lock-screen / tray payload so the destination list is the primary signal. */
+export type PushConfirmation = {
+  title: string
+  body: string
+  taskId?: string
+  listId?: string
+  url: string
+}
+
+/**
+ * Web-push copy for an inbound SMS capture.
+ * Single to-do → title "Added to <List>", body = task title.
+ * Several → title "Added to your lists", body = bullets with list names.
+ * Returns null when there is nothing to notify about.
+ */
+export function buildPushConfirmation(
+  raw: string,
+  messageSid?: string,
+): PushConfirmation | null {
+  const todos = classifyInboundTodos(raw, messageSid)
+  if (todos.length === 0) return null
+
+  const first = todos[0]
+  const url = first.taskId
+    ? `/?focus=${encodeURIComponent(first.taskId)}`
+    : '/'
+
+  if (todos.length === 1) {
+    return {
+      title: `Added to ${first.listName}`,
+      body: first.title,
+      ...(first.taskId ? { taskId: first.taskId } : {}),
+      listId: first.listId,
+      url,
+    }
+  }
+
+  return {
+    title: 'Added to your lists',
+    body: todos.map((t) => `• ${t.title} → ${t.listName}`).join('\n'),
+    ...(first.taskId ? { taskId: first.taskId } : {}),
+    listId: first.listId,
+    url,
+  }
+}
+
 export function escapeXml(text: string): string {
   return text
     .replace(/&/g, '&amp;')

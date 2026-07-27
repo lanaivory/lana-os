@@ -95,7 +95,7 @@ describe('webPush', () => {
     const setVapid = vi.fn()
 
     await sendPushToAll(
-      'Got it ✅ dentist → Appointments',
+      'dentist',
       {
         VAPID_PUBLIC_KEY: 'pub',
         VAPID_PRIVATE_KEY: 'priv',
@@ -107,6 +107,7 @@ describe('webPush', () => {
         setVapid: setVapid as never,
       },
       {
+        title: 'Added to Appointments',
         taskId: 'sms_SM123_0',
         listId: 'appointments',
       },
@@ -115,8 +116,8 @@ describe('webPush', () => {
     expect(send).toHaveBeenCalledWith(
       alive,
       JSON.stringify({
-        title: 'Lana OS',
-        body: 'Got it ✅ dentist → Appointments',
+        title: 'Added to Appointments',
+        body: 'dentist',
         taskId: 'sms_SM123_0',
         listId: 'appointments',
         url: '/?focus=sms_SM123_0',

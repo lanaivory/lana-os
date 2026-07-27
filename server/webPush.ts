@@ -51,6 +51,8 @@ export type PushSendResult = {
 }
 
 export type PushPayloadExtras = {
+  /** Notification title. Defaults to "Lana OS". Prefer list-forward titles. */
+  title?: string
   /** Deep-link target task (deterministic SMS id when available). */
   taskId?: string
   /** Context list id for the focused task. */
@@ -61,8 +63,8 @@ export type PushPayloadExtras = {
 
 /**
  * Send a web push to every stored subscription.
- * Title is always "Lana OS"; body is the SMS confirmation text.
- * Optional task/list ids power notification deep-links.
+ * Title defaults to "Lana OS"; body is typically the capture confirmation.
+ * Optional title/task/list ids power list-forward alerts and deep-links.
  * Prunes 404/410 subscriptions. Soft no-op when VAPID or KV unset.
  */
 export async function sendPushToAll(
@@ -89,6 +91,7 @@ export async function sendPushToAll(
   const subs = await list(env)
   if (subs.length === 0) return { sent: 0, failed: 0, pruned: 0 }
 
+  const title = extras.title?.trim() || 'Lana OS'
   const taskId = extras.taskId?.trim() || undefined
   const listId = extras.listId?.trim() || undefined
   const url =
@@ -96,7 +99,7 @@ export async function sendPushToAll(
     (taskId ? `/?focus=${encodeURIComponent(taskId)}` : '/')
 
   const payload = JSON.stringify({
-    title: 'Lana OS',
+    title,
     body,
     ...(taskId ? { taskId } : {}),
     ...(listId ? { listId } : {}),

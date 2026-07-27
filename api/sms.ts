@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
+  buildPushConfirmation,
   buildSmsConfirmation,
   buildTwimlMessage,
-  classifyInboundTodos,
   extractTwilioBody,
   extractTwilioMessageSid,
 } from '../server/smsConfirm.js'
@@ -11,7 +11,7 @@ import { sendPushToAll } from '../server/webPush.js'
 /**
  * POST /api/sms — Twilio inbound webhook.
  * Classifies Body with the shared splitter/classifier and replies with TwiML.
- * After capture confirmation, fans out a web push to stored subscriptions.
+ * After capture confirmation, fans out a web push naming the destination list.
  * Board population stays on GET /api/inbox polling.
  */
 export default async function handler(
@@ -27,18 +27,16 @@ export default async function handler(
     const raw = extractTwilioBody(req.body)
     const messageSid = extractTwilioMessageSid(req.body)
     const confirmation = buildSmsConfirmation(raw)
-    const todos = classifyInboundTodos(raw, messageSid)
+    const push = buildPushConfirmation(raw, messageSid)
 
     // Notify installed PWAs; never let push failures break Twilio TwiML.
-    if (todos.length > 0) {
+    if (push) {
       try {
-        const first = todos[0]
-        await sendPushToAll(confirmation, process.env, {}, {
-          taskId: first.taskId,
-          listId: first.listId,
-          url: first.taskId
-            ? `/?focus=${encodeURIComponent(first.taskId)}`
-            : '/',
+        await sendPushToAll(push.body, process.env, {}, {
+          title: push.title,
+          taskId: push.taskId,
+          listId: push.listId,
+          url: push.url,
         })
       } catch {
         // soft-fail

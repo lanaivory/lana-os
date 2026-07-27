@@ -30,7 +30,10 @@ export default async function handler(
 
   try {
     const saved = await addPushSubscription(sub)
-    return res.status(200).json({ ok: true, saved })
+    if (!saved) {
+      return res.status(503).json({ error: 'Push storage not configured', saved: false })
+    }
+    return res.status(200).json({ ok: true, saved: true })
   } catch {
     return res.status(500).json({ error: 'Failed to save subscription' })
   }
