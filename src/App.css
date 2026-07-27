@@ -1558,8 +1558,10 @@ body.is-resizing * {
   }
 
   .board {
-    padding: 8px 10px 10px;
-    scroll-padding-inline: 10px;
+    /* Left padding 0 so the first column can sit flush on a leading-edge snap. */
+    padding: 8px 10px 10px 0;
+    scroll-padding-left: 0;
+    scroll-padding-right: 0;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
   }
@@ -1594,8 +1596,10 @@ body.is-resizing * {
   }
 
   .board__col-wrap {
+    /* Snap to each column's leading (start) edge — symmetric forward/back. */
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    scroll-margin-left: 0;
   }
 
   /* Leave a peek of the next column; swipe snaps to the next full list */
@@ -1624,6 +1628,14 @@ body.is-resizing * {
   .board__gap {
     flex-basis: 6px;
     width: 6px;
+  }
+
+  /* No leading spacer before the first snap target — keeps scrollLeft 0 flush. */
+  .board > .board__gap:first-child {
+    flex-basis: 0;
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
   }
 
   /* Ignore saved desktop card widths on narrow viewports */

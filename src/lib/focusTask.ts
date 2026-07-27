@@ -87,9 +87,8 @@ export function scrollTaskIntoBoardView(
     const targetRect = target.getBoundingClientRect()
 
     if (align === 'start') {
-      // Mobile snap-scroll: bring the destination column flush to the start edge.
-      const padding = 10
-      const delta = targetRect.left - boardRect.left - padding
+      // Mobile snap-scroll: leading-edge align (matches scroll-padding-left: 0).
+      const delta = targetRect.left - boardRect.left
       if (Math.abs(delta) > 1) {
         boardEl.scrollBy({ left: delta, behavior: 'smooth' })
       }
