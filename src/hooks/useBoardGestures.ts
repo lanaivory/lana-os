@@ -81,12 +81,6 @@ export function useBoardGestures(
     const board = boardRef.current
     if (!board) return
 
-    // Touch-driven devices only — keep desktop wheel/trackpad scrolling native.
-    const coarse =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(hover: none), (pointer: coarse)').matches
-    if (!coarse) return
-
     let axisSession: AxisSession | null = null
     let pinchSession: PinchSession | null = null
 
@@ -224,6 +218,7 @@ export function useBoardGestures(
       if (event.touches.length === 0) endAxis()
     }
 
+    // Touch listeners only fire for real touches — desktop mouse/trackpad stays native.
     board.addEventListener('touchstart', onTouchStart, { passive: true })
     board.addEventListener('touchmove', onTouchMove, { passive: false })
     board.addEventListener('touchend', onTouchEnd)
