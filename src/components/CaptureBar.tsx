@@ -15,6 +15,7 @@ type Props = {
  * Keep the capture bar flush above the iOS keyboard by sizing the app shell
  * to the visual viewport while focused (avoids the extra gap / jump).
  * Also counters visualViewport offset so the bar layout does not shift sideways.
+ * Always restores shell metrics on blur so the bar cannot unmount/hide mid-session.
  */
 function useCaptureKeyboardInset(focused: boolean) {
   useEffect(() => {
@@ -33,6 +34,9 @@ function useCaptureKeyboardInset(focused: boolean) {
       root.style.removeProperty('transform')
       root.style.removeProperty('--keyboard-inset')
       root.classList.remove('os--keyboard-open')
+      if (window.scrollX !== 0 || window.scrollY !== 0) {
+        window.scrollTo(0, 0)
+      }
     }
 
     if (!focused) {
@@ -43,9 +47,10 @@ function useCaptureKeyboardInset(focused: boolean) {
     const sync = () => {
       const offsetTop = vv.offsetTop
       const offsetLeft = vv.offsetLeft
-      const height = vv.height
-      const width = vv.width
-      const keyboardInset = Math.max(0, window.innerHeight - height - offsetTop)
+      // Guard against transient 0-height frames during keyboard animation.
+      const height = Math.max(vv.height, window.innerHeight * 0.45)
+      const width = Math.max(vv.width, 200)
+      const keyboardInset = Math.max(0, window.innerHeight - vv.height - offsetTop)
       const open = keyboardInset > 24
 
       root.style.height = `${height}px`
@@ -123,6 +128,8 @@ export function CaptureBar({ onCapture }: Props) {
   return (
     <section
       className={`capture ${pulse ? 'is-pulse' : ''} ${focused ? 'is-focused' : ''}`}
+      data-capture-bar
+      aria-label="Quick capture"
     >
       <div className="capture__shell">
         <span className="capture__plus" aria-hidden>

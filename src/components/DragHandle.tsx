@@ -20,7 +20,7 @@ export function DragHandle({ attributes, listeners, setActivatorRef }: Props) {
       {...attributes}
       {...listeners}
     >
-      <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden>
+      <svg className="card__drag-icon" viewBox="0 0 10 16" width="10" height="16" aria-hidden>
         <circle cx="3" cy="3" r="1.35" fill="currentColor" />
         <circle cx="7" cy="3" r="1.35" fill="currentColor" />
         <circle cx="3" cy="8" r="1.35" fill="currentColor" />

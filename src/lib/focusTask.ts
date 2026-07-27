@@ -37,6 +37,32 @@ export function clearFocusFromUrl(): void {
 }
 
 /**
+ * Scroll `el` within a scrollable ancestor only — never the window.
+ * Native scrollIntoView can pan the document on iOS and hide the capture bar.
+ */
+function scrollIntoScrollParent(el: HTMLElement): void {
+  const parent = el.closest<HTMLElement>('.card__scroll, .board')
+  if (!parent) return
+  const parentRect = parent.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const pad = 8
+
+  if (elRect.top < parentRect.top + pad) {
+    parent.scrollTop += elRect.top - parentRect.top - pad
+  } else if (elRect.bottom > parentRect.bottom - pad) {
+    parent.scrollTop += elRect.bottom - parentRect.bottom + pad
+  }
+}
+
+/** Keep the document viewport locked so the capture footer cannot scroll away. */
+function lockDocumentScroll(): void {
+  if (typeof window === 'undefined') return
+  if (window.scrollX !== 0 || window.scrollY !== 0) {
+    window.scrollTo(0, 0)
+  }
+}
+
+/**
  * Horizontally scroll the board so the card is visible, then scroll/highlight the task.
  * Returns true when the task element was found and focused.
  */
@@ -78,7 +104,8 @@ export function scrollTaskIntoBoardView(
     }
   }
 
-  taskEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  scrollIntoScrollParent(taskEl)
+  lockDocumentScroll()
 
   const ms = opts.highlightMs ?? 2200
   taskEl.classList.add('is-focus-flash')

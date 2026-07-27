@@ -9,13 +9,18 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
+  overflow: hidden;
 }
 
 html,
 body {
   margin: 0;
   background: #0b0d11;
+  /* Prevent iOS document rubber-band from scrolling the capture bar away. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 html[data-theme='light'],

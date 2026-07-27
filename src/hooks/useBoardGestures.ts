@@ -56,6 +56,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 /**
  * Mobile board gestures: one-axis scroll lock, pinch zoom, and scroll-back visibility.
  * Desktop behavior is unchanged (listeners only attach on coarse pointers / touch).
+ * Pinch is the only gesture path that changes zoom — taps/scrolls never touch it.
  */
 export function useBoardGestures(
   boardRef: RefObject<HTMLElement | null>,
@@ -80,6 +81,17 @@ export function useBoardGestures(
   useEffect(() => {
     const board = boardRef.current
     if (!board) return
+
+    // Prefer touch devices; keep mouse/trackpad desktop behavior native.
+    const coarse = window.matchMedia('(hover: none), (pointer: coarse)')
+    if (!coarse.matches && !('ontouchstart' in window)) {
+      const syncSnapBackDesktop = () => {
+        setShowSnapBack(board.scrollLeft > SNAP_BACK_SHOW_PX)
+      }
+      board.addEventListener('scroll', syncSnapBackDesktop, { passive: true })
+      syncSnapBackDesktop()
+      return () => board.removeEventListener('scroll', syncSnapBackDesktop)
+    }
 
     let axisSession: AxisSession | null = null
     let pinchSession: PinchSession | null = null
@@ -131,6 +143,7 @@ export function useBoardGestures(
       }
 
       if (event.touches.length !== 1) return
+      // A second finger ending / extra touches must not clear an intentional zoom.
       if (isInteractiveTarget(event.target)) {
         axisSession = null
         return
@@ -160,7 +173,7 @@ export function useBoardGestures(
         event.preventDefault()
         if (pinchSession.applied) return
         const distance = touchDistance(event.touches[0], event.touches[1])
-        if (pinchSession.startDistance < 12) return
+        if (pinchSession.startDistance < 16) return
         const ratio = distance / pinchSession.startDistance
         if (ratio <= PINCH_ZOOM_OUT_RATIO) {
           pinchSession.applied = true

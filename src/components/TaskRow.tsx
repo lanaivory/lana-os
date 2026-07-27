@@ -153,7 +153,7 @@ export function TaskRow({
               e.stopPropagation()
             }}
           >
-            <svg viewBox="0 0 10 16" width="8" height="14" aria-hidden>
+            <svg className="task__drag-icon" viewBox="0 0 10 16" width="8" height="14" aria-hidden>
               <circle cx="3" cy="3" r="1.35" fill="currentColor" />
               <circle cx="7" cy="3" r="1.35" fill="currentColor" />
               <circle cx="3" cy="8" r="1.35" fill="currentColor" />

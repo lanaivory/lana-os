@@ -28,6 +28,7 @@ import {
   isPlaylistId,
   orderedListTasks,
 } from './lib/board'
+import { loadBoardZoomOut, saveBoardZoomOut } from './lib/boardZoom'
 import {
   cardIdForTask,
   clearFocusFromUrl,
@@ -63,7 +64,7 @@ export default function App() {
   const [insertion, setInsertion] = useState<InsertionState>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
-  const [boardZoomOut, setBoardZoomOut] = useState(false)
+  const [boardZoomOut, setBoardZoomOut] = useState(loadBoardZoomOut)
   const [confirmDelete, setConfirmDelete] = useState<
     | { kind: 'task'; taskId: string; text: string }
     | { kind: 'list'; listId: string; name: string; taskCount: number }
@@ -79,11 +80,12 @@ export default function App() {
   >(null)
 
   // Mouse: short distance drag from handles (and task rows via mouse-only listeners).
-  // Touch: TouchSensor listeners are only attached on drag handles, so a normal
-  // swipe on a card/task body scrolls the board; drag starts from the handle.
+  // Touch: listeners only on drag handles; long-press so scrolling never picks up a column/task.
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 280, tolerance: 10 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -92,6 +94,30 @@ export default function App() {
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000)
     return () => window.clearInterval(id)
+  }, [])
+
+  // Persist board zoom — only zoom button + pinch should change it; survive reloads.
+  useEffect(() => {
+    saveBoardZoomOut(boardZoomOut)
+  }, [boardZoomOut])
+
+  // iOS sometimes pans the document after focus/scrollIntoView; keep capture pinned.
+  useEffect(() => {
+    const lock = () => {
+      if (window.scrollX !== 0 || window.scrollY !== 0) {
+        window.scrollTo(0, 0)
+      }
+    }
+    lock()
+    window.addEventListener('scroll', lock, { passive: true })
+    const vv = window.visualViewport
+    vv?.addEventListener('scroll', lock)
+    vv?.addEventListener('resize', lock)
+    return () => {
+      window.removeEventListener('scroll', lock)
+      vv?.removeEventListener('scroll', lock)
+      vv?.removeEventListener('resize', lock)
+    }
   }, [])
 
   // Notification deep-link: /?focus=<taskId> (and SW postMessage fallback).
