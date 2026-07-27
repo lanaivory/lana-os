@@ -21,7 +21,7 @@ export function useTwilioInbox(
   capture: (
     raw: string,
     opts?: { fromText?: boolean; messageSid?: string },
-  ) => void,
+  ) => void | string[],
 ) {
   const [connected, setConnected] = useState(false)
   const [checking, setChecking] = useState(false)

@@ -283,13 +283,14 @@
 }
 
 .capture__plus {
+  flex: 0 0 auto;
   color: var(--faint);
   font-size: 1.1rem;
   line-height: 1;
 }
 
 .capture__input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   border: 0;
   outline: 0;
@@ -297,13 +298,24 @@
   color: var(--text);
   font: inherit;
   font-size: 0.95rem;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  text-indent: 0;
+  direction: ltr;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .capture__input::placeholder {
   color: var(--faint);
+  text-align: left;
+  text-indent: 0;
+  opacity: 1;
 }
 
 .capture__go {
+  flex: 0 0 auto;
   border: 0;
   border-radius: 9px;
   padding: 8px 12px;
@@ -313,6 +325,8 @@
   font-weight: 600;
   font-size: 0.82rem;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .capture__go:disabled {
@@ -1816,8 +1830,17 @@ body.is-resizing * {
     padding-bottom: 10px;
   }
 
-  .capture__shell {
+  /* Focused + unfocused share the same shell metrics — no padding/gap drift. */
+  .capture__shell,
+  .capture.is-focused .capture__shell {
     padding: 12px 12px 12px 14px;
+    gap: 10px;
+  }
+
+  /* 16px prevents iOS Safari zoom-on-focus (which shifts text to the right). */
+  .capture__input {
+    font-size: 16px;
+    line-height: 1.25;
   }
 
   .capture__go {

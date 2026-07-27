@@ -42,7 +42,7 @@ export function clearFocusFromUrl(): void {
  */
 export function scrollTaskIntoBoardView(
   taskId: string,
-  opts: { highlightMs?: number } = {},
+  opts: { highlightMs?: number; alignColumn?: 'nearest' | 'start' } = {},
 ): boolean {
   if (typeof document === 'undefined') return false
   const taskEl = document.querySelector<HTMLElement>(
@@ -52,16 +52,29 @@ export function scrollTaskIntoBoardView(
 
   const cardEl = taskEl.closest<HTMLElement>('.card')
   const boardEl = document.querySelector<HTMLElement>('.board')
+  const align = opts.alignColumn ?? 'nearest'
 
   if (boardEl && cardEl) {
+    const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
+    const target = align === 'start' && colWrap ? colWrap : cardEl
     const boardRect = boardEl.getBoundingClientRect()
-    const cardRect = cardEl.getBoundingClientRect()
-    const deltaLeft = cardRect.left - boardRect.left
-    const deltaRight = cardRect.right - boardRect.right
-    if (deltaLeft < 0) {
-      boardEl.scrollBy({ left: deltaLeft - 12, behavior: 'smooth' })
-    } else if (deltaRight > 0) {
-      boardEl.scrollBy({ left: deltaRight + 12, behavior: 'smooth' })
+    const targetRect = target.getBoundingClientRect()
+
+    if (align === 'start') {
+      // Mobile snap-scroll: bring the destination column flush to the start edge.
+      const padding = 10
+      const delta = targetRect.left - boardRect.left - padding
+      if (Math.abs(delta) > 1) {
+        boardEl.scrollBy({ left: delta, behavior: 'smooth' })
+      }
+    } else {
+      const deltaLeft = targetRect.left - boardRect.left
+      const deltaRight = targetRect.right - boardRect.right
+      if (deltaLeft < 0) {
+        boardEl.scrollBy({ left: deltaLeft - 12, behavior: 'smooth' })
+      } else if (deltaRight > 0) {
+        boardEl.scrollBy({ left: deltaRight + 12, behavior: 'smooth' })
+      }
     }
   }
 

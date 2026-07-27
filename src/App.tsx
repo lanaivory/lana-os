@@ -12,7 +12,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Board } from './components/Board'
 import { CaptureBar } from './components/CaptureBar'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -37,6 +37,12 @@ import {
 import { cardNeedsExpand, findFirstSearchMatch } from './lib/searchNav'
 import type { PlaylistId } from './lib/types'
 import './App.css'
+
+/** Mobile board snap breakpoint — keep in sync with App.css max-width: 720px. */
+function isMobileBoardViewport(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(max-width: 720px)').matches
+}
 
 type ActiveDrag =
   | { type: 'task'; taskId: string; from: 'playlist' | 'list'; containerId: string }
@@ -67,6 +73,10 @@ export default function App() {
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(() =>
     readFocusTaskId(),
   )
+  /** After manual capture on mobile: snap the board to where the task landed. */
+  const [pendingCaptureRevealId, setPendingCaptureRevealId] = useState<
+    string | null
+  >(null)
 
   // Mouse: short distance drag from handles (and task rows via mouse-only listeners).
   // Touch: TouchSensor listeners are only attached on drag handles, so a normal
@@ -181,6 +191,69 @@ export default function App() {
     toggleListCollapsed,
     togglePlaylistCollapsed,
   ])
+
+  // Manual capture → snap/highlight destination list (mobile only; playlists win).
+  useEffect(() => {
+    if (!pendingCaptureRevealId) return
+
+    const task = boardState.tasks[pendingCaptureRevealId]
+    if (!task) {
+      setPendingCaptureRevealId(null)
+      return
+    }
+
+    const cardId = cardIdForTask(boardState, pendingCaptureRevealId)
+    if (cardId) {
+      const expand = cardNeedsExpand(boardState, cardId)
+      if (expand?.kind === 'playlist') {
+        togglePlaylistCollapsed(expand.id as PlaylistId)
+        return
+      }
+      if (expand?.kind === 'list') {
+        toggleListCollapsed(expand.id)
+        return
+      }
+    }
+
+    let attempts = 0
+    let timer = 0
+    const tryScroll = () => {
+      attempts += 1
+      if (
+        scrollTaskIntoBoardView(pendingCaptureRevealId, {
+          highlightMs: 2400,
+          alignColumn: 'start',
+        })
+      ) {
+        setPendingCaptureRevealId(null)
+        return
+      }
+      if (attempts < 12) {
+        timer = window.setTimeout(tryScroll, 80)
+      } else {
+        setPendingCaptureRevealId(null)
+      }
+    }
+    timer = window.setTimeout(tryScroll, 40)
+    return () => window.clearTimeout(timer)
+  }, [
+    pendingCaptureRevealId,
+    boardState,
+    toggleListCollapsed,
+    togglePlaylistCollapsed,
+  ])
+
+  const handleCapture = useCallback(
+    (raw: string) => {
+      const createdIds = store.capture(raw)
+      if (createdIds.length === 0) return
+      // Desktop stays put; mobile snaps to the destination category/playlist.
+      if (isMobileBoardViewport()) {
+        setPendingCaptureRevealId(createdIds[0])
+      }
+    },
+    [store.capture],
+  )
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -508,7 +581,7 @@ export default function App() {
         </DragOverlay>
       </DndContext>
 
-      <CaptureBar onCapture={store.capture} />
+      <CaptureBar onCapture={handleCapture} />
 
       <SettingsModal
         open={settingsOpen}
