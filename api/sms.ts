@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { ingestSmsIntoCloudState } from '../server/smsBoard.js'
 import {
   buildSmsConfirmation,
   buildTwimlMessage,
@@ -10,9 +11,10 @@ import { sendPushToAll } from '../server/webPush.js'
 
 /**
  * POST /api/sms — Twilio inbound webhook.
- * Classifies Body with the shared splitter/classifier and replies with TwiML.
- * After capture confirmation, fans out a web push to stored subscriptions.
- * Board population stays on GET /api/inbox polling.
+ * Classifies Body with the shared splitter/classifier, writes to-dos into the
+ * shared KV board state (same pipeline as the client), marks the MessageSid
+ * ingested so /api/inbox will not re-add, replies with TwiML, then fans out
+ * a web push deep-linked to the first task.
  */
 export default async function handler(
   req: VercelRequest,
@@ -28,6 +30,15 @@ export default async function handler(
     const messageSid = extractTwilioMessageSid(req.body)
     const confirmation = buildSmsConfirmation(raw)
     const todos = classifyInboundTodos(raw, messageSid)
+
+    // Persist to shared board before push so notification tap finds the task.
+    if (todos.length > 0 && messageSid) {
+      try {
+        await ingestSmsIntoCloudState(raw, messageSid)
+      } catch {
+        // soft-fail — inbox poll remains a fallback
+      }
+    }
 
     // Notify installed PWAs; never let push failures break Twilio TwiML.
     if (todos.length > 0) {

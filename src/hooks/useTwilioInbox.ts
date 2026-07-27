@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { stateHasSmsMessage } from '../lib/capturePipeline'
+import type { AppState } from '../lib/types'
 import {
   loadConsumedSids,
   markConsumed,
@@ -15,6 +17,8 @@ const POLL_MS = 2 * 60_000
 
 /**
  * Poll GET /api/inbox every 2 minutes. New SMS bodies go through the same capture pipeline.
+ * Skips MessageSids already consumed locally or already present on the board
+ * (e.g. written by /api/sms into shared KV).
  * Exposes checkNow() for an immediate pull from the header.
  */
 export function useTwilioInbox(
@@ -22,12 +26,15 @@ export function useTwilioInbox(
     raw: string,
     opts?: { fromText?: boolean; messageSid?: string },
   ) => void | string[],
+  getState?: () => AppState,
 ) {
   const [connected, setConnected] = useState(false)
   const [checking, setChecking] = useState(false)
   const consumedRef = useRef<Set<string>>(loadConsumedSids())
   const captureRef = useRef(capture)
   captureRef.current = capture
+  const getStateRef = useRef(getState)
+  getStateRef.current = getState
   const inFlightRef = useRef<Promise<void> | null>(null)
 
   const pollOnce = useCallback(async () => {
@@ -47,11 +54,13 @@ export function useTwilioInbox(
         setConnected(true)
         const data = (await res.json()) as unknown
         const messages = Array.isArray(data) ? (data as InboxMessage[]) : []
+        const board = getStateRef.current?.()
 
         // Oldest first so capture order matches SMS chronology.
         const fresh = messages
           .filter((m) => m?.sid && typeof m.body === 'string')
           .filter((m) => !consumedRef.current.has(m.sid))
+          .filter((m) => !(board && stateHasSmsMessage(board, m.sid)))
           .sort((a, b) => {
             const da = Date.parse(a.dateSent) || 0
             const db = Date.parse(b.dateSent) || 0
@@ -67,6 +76,15 @@ export function useTwilioInbox(
             })
           }
           consumedRef.current = markConsumed(consumedRef.current, msg.sid)
+        }
+
+        // Also mark SIDs already on the board so we never re-process them.
+        if (board) {
+          for (const m of messages) {
+            if (m?.sid && stateHasSmsMessage(board, m.sid)) {
+              consumedRef.current = markConsumed(consumedRef.current, m.sid)
+            }
+          }
         }
       } catch {
         setConnected(false)

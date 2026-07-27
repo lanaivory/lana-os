@@ -1,10 +1,12 @@
 import type { Plugin } from 'vite'
+import { filterOutIngestedSids } from './server/ingestedSids.ts'
 import { assertPasscode } from './server/passcode.ts'
 import {
   addPushSubscription,
   parsePushSubscription,
   removePushSubscription,
 } from './server/pushStore.ts'
+import { ingestSmsIntoCloudState } from './server/smsBoard.ts'
 import {
   buildSmsConfirmation,
   buildTwimlMessage,
@@ -65,7 +67,8 @@ export function twilioInboxPlugin(): Plugin {
             TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
             TWILIO_NUMBER: process.env.TWILIO_NUMBER,
           })
-          sendJson(res, 200, messages)
+          const fresh = await filterOutIngestedSids(messages)
+          sendJson(res, 200, fresh)
         } catch {
           sendJson(res, 200, [])
         }
@@ -86,6 +89,13 @@ export function twilioInboxPlugin(): Plugin {
           const messageSid = extractTwilioMessageSid(rawBody)
           const confirmation = buildSmsConfirmation(body)
           const todos = classifyInboundTodos(body, messageSid)
+          if (todos.length > 0 && messageSid) {
+            try {
+              await ingestSmsIntoCloudState(body, messageSid)
+            } catch {
+              // soft-fail
+            }
+          }
           if (todos.length > 0) {
             try {
               const first = todos[0]

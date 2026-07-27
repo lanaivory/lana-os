@@ -26,6 +26,17 @@ describe('classifyInboundTodos', () => {
     expect(todos[0].taskId).toBe('sms_SMabc123_0')
     expect(todos[0].listId).toBe('errands')
   })
+
+  it('routes timing words onto playlists', () => {
+    const todos = classifyInboundTodos(
+      'Book dentist today\nShip tomorrow\nPlan this week',
+    )
+    expect(todos.map((t) => t.playlistId)).toEqual([
+      'today',
+      'tomorrow',
+      'week',
+    ])
+  })
 })
 
 describe('buildSmsConfirmation', () => {
