@@ -35,10 +35,19 @@ function titleFor(state: PushUiState): string {
   }
 }
 
-export function NotifyBell() {
+type Props = {
+  /** Visual variant — topbar (legacy) or settings row. */
+  variant?: 'topbar' | 'settings'
+}
+
+export function NotifyBell({ variant = 'settings' }: Props) {
   const { state, enable } = usePushNotifications()
   const canEnable = state === 'default'
-  const disabled = state === 'enabled' || state === 'denied' || state === 'unsupported' || state === 'busy'
+  const disabled =
+    state === 'enabled' ||
+    state === 'denied' ||
+    state === 'unsupported' ||
+    state === 'busy'
 
   const onClick = () => {
     if (state === 'needs-install') {
@@ -49,6 +58,39 @@ export function NotifyBell() {
     }
     if (!canEnable) return
     void enable()
+  }
+
+  if (variant === 'settings') {
+    const settingsDisabled = state === 'enabled' || state === 'denied' || state === 'unsupported' || state === 'busy'
+    return (
+      <button
+        type="button"
+        className={`settings-btn${state === 'enabled' ? ' settings-btn--on' : ''}`}
+        onClick={onClick}
+        disabled={settingsDisabled}
+        title={titleFor(state)}
+        aria-label={labelFor(state)}
+        data-state={state}
+      >
+        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+          <path
+            d="M10 2.5a4.2 4.2 0 0 0-4.2 4.2v2.1c0 .7-.28 1.37-.78 1.87L4.2 11.5h11.6l-.82-.83a2.65 2.65 0 0 1-.78-1.87V6.7A4.2 4.2 0 0 0 10 2.5z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8.2 14.2a1.8 1.8 0 0 0 3.6 0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span>{labelFor(state)}</span>
+      </button>
+    )
   }
 
   return (

@@ -62,15 +62,8 @@ export function ContextListCard({
   const list = state.lists.find((l) => l.id === listId)
   if (!list) return null
 
-  const taskIds = orderedListTasks(state, list.id, { hidePlanned: true }).filter(
-    (id) => {
-      const t = state.tasks[id]
-      if (!t) return false
-      const q = query.trim().toLowerCase()
-      if (!q) return true
-      return t.text.toLowerCase().includes(q)
-    },
-  )
+  const q = query.trim().toLowerCase()
+  const taskIds = orderedListTasks(state, list.id, { hidePlanned: true })
   const tasks = taskIds
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
@@ -132,6 +125,9 @@ export function ContextListCard({
                       from="list"
                       sortableId={`task:list:${list.id}:${task.id}`}
                       showListTag
+                      searchMatch={
+                        Boolean(q) && task.text.toLowerCase().includes(q)
+                      }
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
@@ -189,15 +185,11 @@ export function PlaylistCard({
   taskInsertIndex = null,
 }: PlaylistProps) {
   const collapsed = state.collapsedPlaylists[playlistId]
+  const q = query.trim().toLowerCase()
   const ids = state.playlists[playlistId]
   let tasks = ids
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
-    .filter((t) => {
-      const q = query.trim().toLowerCase()
-      if (!q) return true
-      return t.text.toLowerCase().includes(q)
-    })
 
   if (sortByTime && playlistId === 'today') {
     tasks = [...tasks].sort((a, b) => {
@@ -294,6 +286,9 @@ export function PlaylistCard({
                       compact
                       showTime={showTime}
                       showListTag
+                      searchMatch={
+                        Boolean(q) && task.text.toLowerCase().includes(q)
+                      }
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}

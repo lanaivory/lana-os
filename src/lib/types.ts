@@ -66,6 +66,11 @@ export type AppState = {
   collapsedPlaylists: Record<PlaylistId, boolean>
   theme: ThemeMode
   sortTodayByTime: boolean
+  /**
+   * When false, task titles stay on one line and scroll horizontally
+   * inside the row (lists + playlists).
+   */
+  wrapTaskTitles: boolean
   /** Whether first-run demo content was applied */
   seeded: boolean
   /** 2D board: each column is a top-to-bottom stack of card ids */
@@ -144,6 +149,7 @@ export function createEmptyState(): AppState {
     collapsedPlaylists: { today: false, tomorrow: false, week: false },
     theme: 'dark',
     sortTodayByTime: false,
+    wrapTaskTitles: true,
     seeded: false,
     boardColumns: [
       ['today', 'tomorrow', 'week'],

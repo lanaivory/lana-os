@@ -12,6 +12,7 @@ function baseState(overrides: Partial<AppState> = {}): AppState {
     collapsedPlaylists: { today: false, tomorrow: false, week: false },
     theme: 'dark',
     sortTodayByTime: false,
+    wrapTaskTitles: true,
     seeded: true,
     boardColumns: [['today', 'tomorrow', 'week']],
     cardHeights: {},

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { NotifyBell } from './NotifyBell'
 
 type Props = {
   query: string
@@ -15,8 +14,8 @@ type Props = {
   onOpenTrash: () => void
   trashCount?: number
   textCaptureConnected?: boolean
-  textCaptureChecking?: boolean
-  onCheckTexts?: () => void
+  boardZoomOut?: boolean
+  onToggleBoardZoom?: () => void
 }
 
 export function HeaderBar({
@@ -33,8 +32,8 @@ export function HeaderBar({
   onOpenTrash,
   trashCount = 0,
   textCaptureConnected = false,
-  textCaptureChecking = false,
-  onCheckTexts,
+  boardZoomOut = false,
+  onToggleBoardZoom,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -86,29 +85,81 @@ export function HeaderBar({
           <kbd>⌘K</kbd>
         </label>
 
-        {onCheckTexts && (
-          <button
-            type="button"
-            className="topbar__btn"
-            onClick={onCheckTexts}
-            disabled={textCaptureChecking}
-            title="Pull new texts now"
-          >
-            {textCaptureChecking ? 'Checking…' : 'Check now'}
-          </button>
-        )}
-
-        <NotifyBell />
-
         <button
           type="button"
-          className="topbar__btn"
+          className="topbar__icon"
           onClick={onUndo}
           disabled={!canUndo}
           title="Undo"
+          aria-label="Undo"
         >
-          Undo
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+            <path
+              d="M12.5 4.5L7 10l5.5 5.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M7.2 10H16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
         </button>
+
+        {onToggleBoardZoom && (
+          <button
+            type="button"
+            className={`topbar__icon topbar__zoom${boardZoomOut ? ' is-active' : ''}`}
+            onClick={onToggleBoardZoom}
+            aria-label={boardZoomOut ? 'Zoom board in' : 'Zoom board out'}
+            aria-pressed={boardZoomOut}
+            title={boardZoomOut ? 'Zoom in' : 'Zoom out — see more columns'}
+          >
+            {boardZoomOut ? (
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+                <circle
+                  cx="8.5"
+                  cy="8.5"
+                  r="5.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M12.5 12.5L17 17M6.2 8.5h4.6M8.5 6.2v4.6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+                <circle
+                  cx="8.5"
+                  cy="8.5"
+                  r="5.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M12.5 12.5L17 17M6.2 8.5h4.6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
+        )}
 
         <button
           type="button"
