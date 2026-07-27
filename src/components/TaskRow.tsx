@@ -1,6 +1,11 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import type { ContextList, Task } from '../lib/types'
 import { displayTextWithoutUrl, extractUrl } from '../lib/urls'
 import { HighlightedText } from './HighlightedText'
@@ -25,13 +30,19 @@ type Props = {
   showTime?: boolean
   showListTag?: boolean
   searchMatch?: boolean
+  /** Effective wrap for this row (global + per-task override). */
+  titleWrap?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onTimeChange?: (id: string, time: string | null) => void
   onListChange: (id: string, listId: string) => void
   onClearNew: (id: string) => void
+  onToggleTitleWrap?: (id: string) => void
   insertBefore?: boolean
 }
+
+const DOUBLE_TAP_MS = 320
+const DOUBLE_TAP_SLOP_PX = 24
 
 export function TaskRow({
   task,
@@ -44,11 +55,13 @@ export function TaskRow({
   showTime = false,
   showListTag = true,
   searchMatch = false,
+  titleWrap = true,
   onToggle,
   onDelete,
   onTimeChange,
   onListChange,
   onClearNew,
+  onToggleTitleWrap,
   insertBefore = false,
 }: Props) {
   const dragData: TaskDragData = {
@@ -79,6 +92,31 @@ export function TaskRow({
     | ((event: ReactMouseEvent) => void)
     | undefined
 
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null)
+
+  const handleTitleDoubleActivate = () => {
+    onToggleTitleWrap?.(task.id)
+  }
+
+  const onTitlePointerUp = (event: ReactPointerEvent) => {
+    if (!onToggleTitleWrap) return
+    if (event.pointerType === 'mouse') return
+    if (event.button !== 0) return
+
+    const now = Date.now()
+    const prev = lastTapRef.current
+    lastTapRef.current = { t: now, x: event.clientX, y: event.clientY }
+
+    if (!prev) return
+    const dt = now - prev.t
+    const dist = Math.hypot(event.clientX - prev.x, event.clientY - prev.y)
+    if (dt <= DOUBLE_TAP_MS && dist <= DOUBLE_TAP_SLOP_PX) {
+      lastTapRef.current = null
+      event.preventDefault()
+      handleTitleDoubleActivate()
+    }
+  }
+
   return (
     <>
       {insertBefore && <div className="insert-line insert-line--horizontal" />}
@@ -94,6 +132,7 @@ export function TaskRow({
           task.isNew ? 'is-new' : '',
           searchMatch ? 'is-search-match' : '',
           sortable.isDragging ? 'is-dragging' : '',
+          titleWrap ? 'is-title-wrap' : 'is-title-nowrap',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -155,7 +194,23 @@ export function TaskRow({
             />
           )}
 
-          <div className="task__main">
+          <div
+            className="task__main"
+            onDoubleClick={(e) => {
+              if (!onToggleTitleWrap) return
+              e.preventDefault()
+              e.stopPropagation()
+              handleTitleDoubleActivate()
+            }}
+            onPointerUp={onTitlePointerUp}
+            title={
+              onToggleTitleWrap
+                ? titleWrap
+                  ? 'Double-tap for single-line title'
+                  : 'Double-tap to wrap title'
+                : undefined
+            }
+          >
             <p className="task__text">
               {displayText ? (
                 <HighlightedText text={displayText} query={query} />

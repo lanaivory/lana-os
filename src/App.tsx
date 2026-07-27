@@ -475,6 +475,8 @@ export default function App() {
           liveClock={liveClock}
           liveDate={liveDate}
           insertion={insertion}
+          boardZoomOut={boardZoomOut}
+          onBoardZoomOutChange={setBoardZoomOut}
           onToggle={store.toggleComplete}
           onDelete={requestDeleteTask}
           onDeleteList={requestDeleteList}
@@ -488,6 +490,7 @@ export default function App() {
           onSortByTimeChange={store.setSortTodayByTime}
           onResizeHeight={store.setCardHeight}
           onResizeWidth={store.setCardWidth}
+          onToggleTaskTitleWrap={store.toggleTaskTitleWrap}
         />
 
         <DragOverlay

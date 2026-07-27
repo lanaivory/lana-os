@@ -79,7 +79,8 @@ export function migrateState(state: Partial<AppState>): AppState {
     theme: state.theme === 'light' ? 'light' : 'dark',
     sortTodayByTime: Boolean(state.sortTodayByTime),
     wrapTaskTitles:
-      typeof state.wrapTaskTitles === 'boolean' ? state.wrapTaskTitles : true,
+      typeof state.wrapTaskTitles === 'boolean' ? state.wrapTaskTitles : false,
+    taskTitleWrapOverrides: migrateBoolMap(state.taskTitleWrapOverrides),
     seeded: Boolean(state.seeded),
     boardColumns,
     cardHeights: state.cardHeights ?? {},
@@ -92,6 +93,15 @@ export function migrateState(state: Partial<AppState>): AppState {
   return migrateCanonicalLists(base, {
     excludeListIds: excluded,
   })
+}
+
+function migrateBoolMap(raw: unknown): Record<string, boolean> {
+  if (!raw || typeof raw !== 'object') return {}
+  const out: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'boolean') out[key] = value
+  }
+  return out
 }
 
 function migrateTrash(raw: unknown): TrashEntry[] {

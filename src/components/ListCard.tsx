@@ -33,6 +33,7 @@ type SharedProps = {
   onListChange: (id: string, listId: string) => void
   onClearNew: (id: string) => void
   onResizeHeight: (cardId: string, height: number | null) => void
+  onToggleTaskTitleWrap: (taskId: string) => void
   taskInsertIndex?: number | null
 }
 
@@ -57,6 +58,7 @@ export function ContextListCard({
   onAddTask,
   onDeleteList,
   onResizeHeight,
+  onToggleTaskTitleWrap,
   taskInsertIndex = null,
 }: ContextProps) {
   const list = state.lists.find((l) => l.id === listId)
@@ -128,11 +130,13 @@ export function ContextListCard({
                       searchMatch={
                         Boolean(q) && task.text.toLowerCase().includes(q)
                       }
+                      titleWrap={effectiveTitleWrap(state, task.id)}
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
                       onListChange={onListChange}
                       onClearNew={onClearNew}
+                      onToggleTitleWrap={onToggleTaskTitleWrap}
                     />
                   ))}
                   {taskInsertIndex === tasks.length && (
@@ -182,6 +186,7 @@ export function PlaylistCard({
   onAddTask,
   onResizeHeight,
   onResizeWidth,
+  onToggleTaskTitleWrap,
   taskInsertIndex = null,
 }: PlaylistProps) {
   const collapsed = state.collapsedPlaylists[playlistId]
@@ -289,12 +294,14 @@ export function PlaylistCard({
                       searchMatch={
                         Boolean(q) && task.text.toLowerCase().includes(q)
                       }
+                      titleWrap={effectiveTitleWrap(state, task.id)}
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
                       onTimeChange={onTimeChange}
                       onListChange={onListChange}
                       onClearNew={onClearNew}
+                      onToggleTitleWrap={onToggleTaskTitleWrap}
                     />
                   ))}
                   {taskInsertIndex === tasks.length && (
@@ -439,4 +446,11 @@ function TaskDropBody({
 
 export function renderCardIdIsPlaylist(cardId: string): cardId is PlaylistId {
   return isPlaylistId(cardId)
+}
+
+function effectiveTitleWrap(state: AppState, taskId: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(state.taskTitleWrapOverrides, taskId)) {
+    return state.taskTitleWrapOverrides[taskId]
+  }
+  return state.wrapTaskTitles
 }

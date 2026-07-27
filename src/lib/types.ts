@@ -71,6 +71,11 @@ export type AppState = {
    * inside the row (lists + playlists).
    */
   wrapTaskTitles: boolean
+  /**
+   * Per-task title wrap overrides. When set, wins over `wrapTaskTitles`
+   * for that task id (double-tap toggle on mobile).
+   */
+  taskTitleWrapOverrides: Record<string, boolean>
   /** Whether first-run demo content was applied */
   seeded: boolean
   /** 2D board: each column is a top-to-bottom stack of card ids */
@@ -149,7 +154,8 @@ export function createEmptyState(): AppState {
     collapsedPlaylists: { today: false, tomorrow: false, week: false },
     theme: 'dark',
     sortTodayByTime: false,
-    wrapTaskTitles: true,
+    wrapTaskTitles: false,
+    taskTitleWrapOverrides: {},
     seeded: false,
     boardColumns: [
       ['today', 'tomorrow', 'week'],
