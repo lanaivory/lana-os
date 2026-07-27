@@ -632,7 +632,7 @@
   top: 0;
   bottom: 0;
   width: 14px;
-  cursor: ew-resize !important;
+  cursor: col-resize !important;
   z-index: 8;
   touch-action: none;
   pointer-events: auto;
@@ -654,7 +654,7 @@
   width: 3px;
   border-radius: 999px;
   background: transparent;
-  cursor: ew-resize !important;
+  cursor: col-resize !important;
   transition: background 120ms ease, opacity 120ms ease;
 }
 
@@ -671,7 +671,7 @@
 .width-handle:hover::after,
 .width-handle:active,
 .width-handle:active::after {
-  cursor: ew-resize !important;
+  cursor: col-resize !important;
 }
 
 .width-handle:hover::after,
@@ -680,15 +680,15 @@
   opacity: 1;
 }
 
-/* While hovering a playlist edge, force the resize cursor on the card too */
-.card--playlist:has(.width-handle:hover),
-.card--playlist:has(.width-handle:hover) * {
-  cursor: ew-resize !important;
+/* While hovering a card edge, force the resize cursor on the card too */
+.card:has(.width-handle:hover),
+.card:has(.width-handle:hover) * {
+  cursor: col-resize !important;
 }
 
 body.is-resizing-x,
 body.is-resizing-x * {
-  cursor: ew-resize !important;
+  cursor: col-resize !important;
   user-select: none;
 }
 

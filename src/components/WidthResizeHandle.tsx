@@ -48,9 +48,9 @@ export function WidthResizeHandle({
       aria-orientation="vertical"
       aria-label={`Resize card ${edge}`}
       title="Drag to resize width · double-click to reset"
-      style={{ cursor: 'ew-resize' }}
+      style={{ cursor: 'col-resize' }}
       onPointerEnter={(e) => {
-        e.currentTarget.style.cursor = 'ew-resize'
+        e.currentTarget.style.cursor = 'col-resize'
       }}
       onPointerDown={(e) => {
         e.preventDefault()
@@ -60,7 +60,7 @@ export function WidthResizeHandle({
         const card = e.currentTarget.parentElement as HTMLElement | null
         startW.current = width ?? card?.offsetWidth ?? 300
         document.body.classList.add('is-resizing-x')
-        document.body.style.cursor = 'ew-resize'
+        document.body.style.cursor = 'col-resize'
       }}
       onDoubleClick={(e) => {
         e.preventDefault()

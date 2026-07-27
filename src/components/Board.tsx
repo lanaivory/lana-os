@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react'
 import { useBoardGestures } from '../hooks/useBoardGestures'
-import { isPlaylistId } from '../lib/board'
 import type { AppState, PlaylistId } from '../lib/types'
 import type { InsertionState } from './InsertionLine'
 import { ContextListCard, PlaylistCard, renderCardIdIsPlaylist } from './ListCard'
@@ -139,6 +138,7 @@ export function Board({
                         onToggleCollapsed={onToggleListCollapsed}
                         onAddTask={onAddToList}
                         onResizeHeight={onResizeHeight}
+                        onResizeWidth={onResizeWidth}
                         onToggleTaskTitleWrap={onToggleTaskTitleWrap}
                       />
                     )
@@ -198,7 +198,7 @@ function columnWidth(
 ): number | undefined {
   let max = 0
   for (const id of column) {
-    if (isPlaylistId(id) && widths[id]) max = Math.max(max, widths[id])
+    if (widths[id]) max = Math.max(max, widths[id])
   }
   return max > 0 ? max : undefined
 }

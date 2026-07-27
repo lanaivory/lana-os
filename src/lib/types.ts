@@ -82,7 +82,7 @@ export type AppState = {
   boardColumns: string[][]
   /** Optional custom card body heights (px) */
   cardHeights: Record<string, number>
-  /** Optional custom widths for playlist cards (px) */
+  /** Optional custom widths for board cards / list columns (px) */
   cardWidths: Record<string, number>
   /** Explicit task order inside each context list */
   listOrders: Record<string, string[]>

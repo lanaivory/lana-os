@@ -42,6 +42,7 @@ type ContextProps = SharedProps & {
   onToggleCollapsed: (listId: string) => void
   onAddTask: (listId: string, text: string) => void
   onDeleteList: (listId: string) => void
+  onResizeWidth: (cardId: string, width: number | null) => void
 }
 
 export function ContextListCard({
@@ -58,6 +59,7 @@ export function ContextListCard({
   onAddTask,
   onDeleteList,
   onResizeHeight,
+  onResizeWidth,
   onToggleTaskTitleWrap,
   taskInsertIndex = null,
 }: ContextProps) {
@@ -69,13 +71,17 @@ export function ContextListCard({
   const tasks = taskIds
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
+  const width = state.cardWidths[cardId]
 
   return (
     <SortableCardShell
       cardId={cardId}
       insertBefore={insertBefore}
       height={state.cardHeights[cardId]}
+      width={width}
       onResizeHeight={onResizeHeight}
+      onResizeWidth={onResizeWidth}
+      enableWidthResize
       className={list.collapsed ? 'is-collapsed' : ''}
       style={{ '--accent': list.color } as CSSProperties}
       title={
