@@ -252,7 +252,7 @@ export default function App() {
         setPendingCaptureRevealId(createdIds[0])
       }
     },
-    [store.capture],
+    [store],
   )
 
   useEffect(() => {
