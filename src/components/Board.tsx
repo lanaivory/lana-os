@@ -3,7 +3,12 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import type { CSSProperties, ReactNode } from 'react'
+import {
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
+import { useBoardGestures } from '../hooks/useBoardGestures'
 import { isPlaylistId } from '../lib/board'
 import type { AppState, PlaylistId } from '../lib/types'
 import type { InsertionState } from './InsertionLine'
@@ -15,6 +20,8 @@ type Props = {
   liveClock: string
   liveDate: string
   insertion: InsertionState
+  boardZoomOut: boolean
+  onBoardZoomOutChange: (zoomOut: boolean) => void
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onDeleteList: (listId: string) => void
@@ -28,6 +35,7 @@ type Props = {
   onSortByTimeChange: (value: boolean) => void
   onResizeHeight: (cardId: string, height: number | null) => void
   onResizeWidth: (cardId: string, width: number | null) => void
+  onToggleTaskTitleWrap: (taskId: string) => void
 }
 
 export function Board({
@@ -36,6 +44,8 @@ export function Board({
   liveClock,
   liveDate,
   insertion,
+  boardZoomOut,
+  onBoardZoomOutChange,
   onToggle,
   onDelete,
   onDeleteList,
@@ -49,96 +59,135 @@ export function Board({
   onSortByTimeChange,
   onResizeHeight,
   onResizeWidth,
+  onToggleTaskTitleWrap,
 }: Props) {
+  const boardRef = useRef<HTMLDivElement>(null)
+  const { showSnapBack, snapBackToStart } = useBoardGestures(boardRef, {
+    boardZoomOut,
+    onBoardZoomOutChange,
+  })
+
   return (
-    <div className="board" aria-label="Lana OS board" data-board>
-      <ColumnGap index={0} active={insertion?.kind === 'column' && insertion.index === 0} />
+    <div className="board-shell">
+      <div ref={boardRef} className="board" aria-label="Lana OS board" data-board>
+        <ColumnGap index={0} active={insertion?.kind === 'column' && insertion.index === 0} />
 
-      {state.boardColumns.map((column, colIndex) => {
-        const cardIds = column.map((id) => `card:${id}`)
-        const colWidth = columnWidth(column, state.cardWidths)
-        return (
-          <div key={`col-${colIndex}`} className="board__col-wrap">
-            <BoardColumn columnIndex={colIndex} width={colWidth}>
-              <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-                {column.map((cardId, cardIndex) => {
-                  const insertBefore =
-                    insertion?.kind === 'card' &&
-                    insertion.column === colIndex &&
-                    insertion.index === cardIndex
+        {state.boardColumns.map((column, colIndex) => {
+          const cardIds = column.map((id) => `card:${id}`)
+          const colWidth = columnWidth(column, state.cardWidths)
+          return (
+            <div key={`col-${colIndex}`} className="board__col-wrap">
+              <BoardColumn columnIndex={colIndex} width={colWidth}>
+                <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+                  {column.map((cardId, cardIndex) => {
+                    const insertBefore =
+                      insertion?.kind === 'card' &&
+                      insertion.column === colIndex &&
+                      insertion.index === cardIndex
 
-                  const taskInsertIndex =
-                    insertion?.kind === 'task' &&
-                    (insertion.containerId === cardId ||
-                      insertion.containerId === `list:${cardId}` ||
-                      insertion.containerId === `playlist:${cardId}`)
-                      ? insertion.index
-                      : null
+                    const taskInsertIndex =
+                      insertion?.kind === 'task' &&
+                      (insertion.containerId === cardId ||
+                        insertion.containerId === `list:${cardId}` ||
+                        insertion.containerId === `playlist:${cardId}`)
+                        ? insertion.index
+                        : null
 
-                  if (renderCardIdIsPlaylist(cardId)) {
+                    if (renderCardIdIsPlaylist(cardId)) {
+                      return (
+                        <PlaylistCard
+                          key={cardId}
+                          cardId={cardId}
+                          playlistId={cardId}
+                          state={state}
+                          query={query}
+                          featured={cardId === 'today'}
+                          liveClock={liveClock}
+                          liveDate={liveDate}
+                          sortByTime={state.sortTodayByTime}
+                          onSortByTimeChange={onSortByTimeChange}
+                          insertBefore={insertBefore}
+                          taskInsertIndex={taskInsertIndex}
+                          onToggle={onToggle}
+                          onDelete={onDelete}
+                          onListChange={onListChange}
+                          onClearNew={onClearNew}
+                          onTimeChange={onTimeChange}
+                          onToggleCollapsed={onTogglePlaylistCollapsed}
+                          onAddTask={onAddToPlaylist}
+                          onResizeHeight={onResizeHeight}
+                          onResizeWidth={onResizeWidth}
+                          onToggleTaskTitleWrap={onToggleTaskTitleWrap}
+                        />
+                      )
+                    }
+
                     return (
-                      <PlaylistCard
+                      <ContextListCard
                         key={cardId}
                         cardId={cardId}
-                        playlistId={cardId}
+                        listId={cardId}
                         state={state}
                         query={query}
-                        featured={cardId === 'today'}
-                        liveClock={liveClock}
-                        liveDate={liveDate}
-                        sortByTime={state.sortTodayByTime}
-                        onSortByTimeChange={onSortByTimeChange}
                         insertBefore={insertBefore}
                         taskInsertIndex={taskInsertIndex}
                         onToggle={onToggle}
                         onDelete={onDelete}
+                        onDeleteList={onDeleteList}
                         onListChange={onListChange}
                         onClearNew={onClearNew}
-                        onTimeChange={onTimeChange}
-                        onToggleCollapsed={onTogglePlaylistCollapsed}
-                        onAddTask={onAddToPlaylist}
+                        onToggleCollapsed={onToggleListCollapsed}
+                        onAddTask={onAddToList}
                         onResizeHeight={onResizeHeight}
-                        onResizeWidth={onResizeWidth}
+                        onToggleTaskTitleWrap={onToggleTaskTitleWrap}
                       />
                     )
-                  }
+                  })}
+                  {insertion?.kind === 'card' &&
+                    insertion.column === colIndex &&
+                    insertion.index === column.length && (
+                      <div className="insert-line insert-line--horizontal" />
+                    )}
+                </SortableContext>
+              </BoardColumn>
+              <ColumnGap
+                index={colIndex + 1}
+                active={
+                  insertion?.kind === 'column' && insertion.index === colIndex + 1
+                }
+              />
+            </div>
+          )
+        })}
+      </div>
 
-                  return (
-                    <ContextListCard
-                      key={cardId}
-                      cardId={cardId}
-                      listId={cardId}
-                      state={state}
-                      query={query}
-                      insertBefore={insertBefore}
-                      taskInsertIndex={taskInsertIndex}
-                      onToggle={onToggle}
-                      onDelete={onDelete}
-                      onDeleteList={onDeleteList}
-                      onListChange={onListChange}
-                      onClearNew={onClearNew}
-                      onToggleCollapsed={onToggleListCollapsed}
-                      onAddTask={onAddToList}
-                      onResizeHeight={onResizeHeight}
-                    />
-                  )
-                })}
-                {insertion?.kind === 'card' &&
-                  insertion.column === colIndex &&
-                  insertion.index === column.length && (
-                    <div className="insert-line insert-line--horizontal" />
-                  )}
-              </SortableContext>
-            </BoardColumn>
-            <ColumnGap
-              index={colIndex + 1}
-              active={
-                insertion?.kind === 'column' && insertion.index === colIndex + 1
-              }
+      {showSnapBack && (
+        <button
+          type="button"
+          className="board-snapback"
+          onClick={snapBackToStart}
+          aria-label="Back to Today playlist"
+          title="Back to Today"
+        >
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
+            <path
+              d="M12.5 4.5 7 10l5.5 5.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
-          </div>
-        )
-      })}
+            <path
+              d="M8 10h8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

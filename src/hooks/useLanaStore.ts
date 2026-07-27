@@ -640,6 +640,31 @@ export function useLanaStore() {
     setState((prev) => ({ ...prev, wrapTaskTitles }))
   }, [])
 
+  const setTaskTitleWrap = useCallback((taskId: string, wrap: boolean | null) => {
+    setState((prev) => {
+      const taskTitleWrapOverrides = { ...prev.taskTitleWrapOverrides }
+      if (wrap == null) delete taskTitleWrapOverrides[taskId]
+      else taskTitleWrapOverrides[taskId] = wrap
+      return { ...prev, taskTitleWrapOverrides }
+    })
+  }, [])
+
+  const toggleTaskTitleWrap = useCallback((taskId: string) => {
+    setState((prev) => {
+      const current =
+        taskId in prev.taskTitleWrapOverrides
+          ? prev.taskTitleWrapOverrides[taskId]
+          : prev.wrapTaskTitles
+      return {
+        ...prev,
+        taskTitleWrapOverrides: {
+          ...prev.taskTitleWrapOverrides,
+          [taskId]: !current,
+        },
+      }
+    })
+  }, [])
+
   return {
     state,
     canUndo: undoStack.length > 0,
@@ -675,5 +700,7 @@ export function useLanaStore() {
     toggleTheme,
     setSortTodayByTime,
     setWrapTaskTitles,
+    setTaskTitleWrap,
+    toggleTaskTitleWrap,
   }
 }

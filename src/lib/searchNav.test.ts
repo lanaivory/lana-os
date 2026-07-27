@@ -36,6 +36,7 @@ function baseState(overrides: Partial<AppState> = {}): AppState {
     theme: 'dark',
     sortTodayByTime: false,
     wrapTaskTitles: true,
+    taskTitleWrapOverrides: {},
     seeded: true,
     boardColumns: [
       ['today', 'tomorrow', 'week'],

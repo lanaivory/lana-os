@@ -72,7 +72,8 @@ export function SettingsModal({
             </label>
             <p className="settings-section__desc">
               When off, each title stays on one line and scrolls horizontally inside
-              its row (lists and Today / Tomorrow / This Week).
+              its row (lists and Today / Tomorrow / This Week). Double-tap a title to
+              wrap just that task; double-tap again to snap back.
             </p>
           </section>
 
