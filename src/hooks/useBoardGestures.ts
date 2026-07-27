@@ -4,6 +4,8 @@ const AXIS_THRESHOLD_PX = 8
 const PINCH_ZOOM_OUT_RATIO = 0.88
 const PINCH_ZOOM_IN_RATIO = 1.12
 const SNAP_BACK_SHOW_PX = 48
+/** Finger travel needed to commit to the next/previous column on release. */
+const SNAP_COMMIT_PX = 48
 
 type Axis = 'x' | 'y'
 
@@ -17,6 +19,7 @@ type AxisSession = {
   verticalScrollTop: number
   titleEl: HTMLElement | null
   titleScrollLeft: number
+  lastDx: number
 }
 
 type PinchSession = {
@@ -50,6 +53,12 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     target.closest(
       'input, textarea, select, button, a, [data-drag-handle], .task__drag, .card__drag, .resize-handle, .width-handle',
     ),
+  )
+}
+
+function boardColumns(board: HTMLElement): HTMLElement[] {
+  return [...board.querySelectorAll('.board__col-wrap')].filter(
+    (node): node is HTMLElement => node instanceof HTMLElement,
   )
 }
 
@@ -100,34 +109,68 @@ export function useBoardGestures(
       setShowSnapBack(board.scrollLeft > SNAP_BACK_SHOW_PX)
     }
 
-    const snapBoardToNearestColumn = () => {
-      const cols = [...board.querySelectorAll('.board__col-wrap')].filter(
-        (node): node is HTMLElement => node instanceof HTMLElement,
-      )
+    /**
+     * Settle onto a column leading edge after an axis-locked pan.
+     * Uses swipe direction so back-swipes move column-by-column (and can reach
+     * scrollLeft 0) instead of getting stuck between snap points.
+     */
+    const snapBoardAfterPan = (startScrollLeft: number, panDx: number) => {
+      const cols = boardColumns(board)
       if (!cols.length) return
+
+      // Leading-edge origin matches CSS scroll-padding-left: 0.
       const origin = board.getBoundingClientRect().left
-      let bestEl: HTMLElement | null = null
-      let bestDist = Infinity
-      for (const node of cols) {
-        const dist = Math.abs(node.getBoundingClientRect().left - origin)
-        if (dist < bestDist) {
-          bestDist = dist
-          bestEl = node
+      const scrollDelta = board.scrollLeft - startScrollLeft
+
+      let startIdx = 0
+      let startDist = Infinity
+      for (let i = 0; i < cols.length; i++) {
+        const leftAtStart =
+          cols[i].getBoundingClientRect().left + scrollDelta - origin
+        const dist = Math.abs(leftAtStart)
+        if (dist < startDist) {
+          startDist = dist
+          startIdx = i
         }
       }
-      if (!bestEl || bestDist < 2) return
-      const delta = bestEl.getBoundingClientRect().left - origin
-      board.scrollBy({ left: delta, behavior: 'smooth' })
+
+      const colWidth = cols[startIdx]?.getBoundingClientRect().width ?? 300
+      const threshold = Math.min(SNAP_COMMIT_PX, Math.max(36, colWidth * 0.15))
+
+      let targetIdx = startIdx
+      if (panDx <= -threshold) {
+        // Finger left → later columns.
+        targetIdx = Math.min(cols.length - 1, startIdx + 1)
+      } else if (panDx >= threshold) {
+        // Finger right → toward the playlist / first column.
+        targetIdx = Math.max(0, startIdx - 1)
+      }
+
+      // First column: always land exactly at the leftmost edge.
+      if (targetIdx === 0) {
+        if (board.scrollLeft > 1) {
+          board.scrollTo({ left: 0, behavior: 'smooth' })
+        }
+        return
+      }
+
+      const target = cols[targetIdx]
+      const delta = target.getBoundingClientRect().left - origin
+      if (Math.abs(delta) < 2) return
+      const absoluteLeft = Math.max(0, board.scrollLeft + delta)
+      board.scrollTo({ left: absoluteLeft, behavior: 'smooth' })
     }
 
     const endAxis = () => {
       const axis = axisSession?.axis
       const pannedBoard = axis === 'x' && !axisSession?.titleEl
+      const panDx = axisSession?.lastDx ?? 0
+      const startScrollLeft = axisSession?.boardScrollLeft ?? board.scrollLeft
       axisSession = null
       board.dataset.axisLock = ''
       if (pannedBoard) {
-        // Re-enable snap and settle on the nearest column after a manual pan.
-        requestAnimationFrame(() => snapBoardToNearestColumn())
+        // Re-enable snap and settle on a column leading edge after a manual pan.
+        requestAnimationFrame(() => snapBoardAfterPan(startScrollLeft, panDx))
       }
     }
 
@@ -164,6 +207,7 @@ export function useBoardGestures(
         verticalScrollTop: verticalEl?.scrollTop ?? 0,
         titleEl,
         titleScrollLeft: titleEl?.scrollLeft ?? 0,
+        lastDx: 0,
       }
       board.dataset.axisLock = ''
     }
@@ -203,6 +247,7 @@ export function useBoardGestures(
       event.preventDefault()
 
       if (axisSession.axis === 'x') {
+        axisSession.lastDx = dx
         if (axisSession.titleEl) {
           const el = axisSession.titleEl
           const max = Math.max(0, el.scrollWidth - el.clientWidth)
