@@ -196,9 +196,11 @@ export function useLanaStore() {
   }, [])
 
   const capture = useCallback(
-    (raw: string, opts?: { fromText?: boolean; messageSid?: string }) => {
+    (raw: string, opts?: { fromText?: boolean; messageSid?: string }): string[] => {
       const pieces = splitCaptureText(raw)
-      if (pieces.length === 0) return
+      if (pieces.length === 0) return []
+
+      const createdIds: string[] = []
 
       commit((prev) => {
         const tasks = { ...prev.tasks }
@@ -229,6 +231,7 @@ export function useLanaStore() {
             isNew: Boolean(opts?.fromText),
           }
           tasks[id] = task
+          createdIds.push(id)
           listOrders = withListOrderAppend(listOrders, listId, id)
           if (playlistId && !playlists[playlistId].includes(id)) {
             playlists[playlistId] = [...playlists[playlistId], id]
@@ -237,6 +240,8 @@ export function useLanaStore() {
 
         return { ...prev, tasks, playlists, listOrders }
       })
+
+      return createdIds
     },
     [commit],
   )

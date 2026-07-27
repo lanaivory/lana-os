@@ -71,4 +71,36 @@ describe('cardIdForTask', () => {
     })
     expect(cardIdForTask(state, 't1')).toBe('appointments')
   })
+
+  it('prefers tomorrow/week playlists for timing-routed tasks', () => {
+    const state = baseState({
+      tasks: {
+        t1: {
+          id: 't1',
+          text: 'Ship tomorrow',
+          listId: 'random',
+          completed: false,
+          completedAt: null,
+          createdAt: 1,
+          time: null,
+          overdue: false,
+          isNew: false,
+        },
+        t2: {
+          id: 't2',
+          text: 'Plan this week',
+          listId: 'random',
+          completed: false,
+          completedAt: null,
+          createdAt: 2,
+          time: null,
+          overdue: false,
+          isNew: false,
+        },
+      },
+      playlists: { today: [], tomorrow: ['t1'], week: ['t2'] },
+    })
+    expect(cardIdForTask(state, 't1')).toBe('tomorrow')
+    expect(cardIdForTask(state, 't2')).toBe('week')
+  })
 })

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react'
 
 type Props = {
   onCapture: (raw: string) => void
@@ -7,6 +14,7 @@ type Props = {
 /**
  * Keep the capture bar flush above the iOS keyboard by sizing the app shell
  * to the visual viewport while focused (avoids the extra gap / jump).
+ * Also counters visualViewport offset so the bar layout does not shift sideways.
  */
 function useCaptureKeyboardInset(focused: boolean) {
   useEffect(() => {
@@ -20,6 +28,8 @@ function useCaptureKeyboardInset(focused: boolean) {
       root.style.removeProperty('height')
       root.style.removeProperty('max-height')
       root.style.removeProperty('min-height')
+      root.style.removeProperty('width')
+      root.style.removeProperty('max-width')
       root.style.removeProperty('transform')
       root.style.removeProperty('--keyboard-inset')
       root.classList.remove('os--keyboard-open')
@@ -32,19 +42,28 @@ function useCaptureKeyboardInset(focused: boolean) {
 
     const sync = () => {
       const offsetTop = vv.offsetTop
+      const offsetLeft = vv.offsetLeft
       const height = vv.height
+      const width = vv.width
       const keyboardInset = Math.max(0, window.innerHeight - height - offsetTop)
       const open = keyboardInset > 24
 
       root.style.height = `${height}px`
       root.style.maxHeight = `${height}px`
       root.style.minHeight = `${height}px`
-      root.style.transform = offsetTop ? `translateY(${offsetTop}px)` : ''
+      root.style.width = `${width}px`
+      root.style.maxWidth = `${width}px`
+      root.style.transform =
+        offsetTop || offsetLeft
+          ? `translate(${offsetLeft}px, ${offsetTop}px)`
+          : ''
       root.style.setProperty('--keyboard-inset', `${keyboardInset}px`)
       root.classList.toggle('os--keyboard-open', open)
 
       // iOS sometimes scrolls the layout viewport when focusing inputs.
-      if (window.scrollY !== 0) window.scrollTo(0, 0)
+      if (window.scrollX !== 0 || window.scrollY !== 0) {
+        window.scrollTo(0, 0)
+      }
     }
 
     sync()
@@ -65,6 +84,7 @@ export function CaptureBar({ onCapture }: Props) {
   const [pulse, setPulse] = useState(false)
   const [focused, setFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const submitting = useRef(false)
 
   useCaptureKeyboardInset(focused)
 
@@ -76,11 +96,29 @@ export function CaptureBar({ onCapture }: Props) {
 
   const submit = useCallback(() => {
     const raw = value.trim()
-    if (!raw) return
+    if (!raw || submitting.current) return
+    submitting.current = true
     onCapture(raw)
     setValue('')
     setPulse(true)
+    // Dismiss keyboard so the board snap/highlight is visible.
+    inputRef.current?.blur()
+    // Hold the guard through the click that follows pointerdown on iOS/desktop.
+    window.setTimeout(() => {
+      submitting.current = false
+    }, 400)
   }, [onCapture, value])
+
+  const submitFromPointer = useCallback(
+    (e: PointerEvent | MouseEvent) => {
+      // Prevent the button from stealing focus / blurring the input before click.
+      // Without this, iOS treats the first tap as "dismiss keyboard" only.
+      e.preventDefault()
+      if (!value.trim()) return
+      submit()
+    },
+    [submit, value],
+  )
 
   return (
     <section
@@ -95,6 +133,9 @@ export function CaptureBar({ onCapture }: Props) {
           className="capture__input"
           placeholder="Capture a thought… Enter to add"
           value={value}
+          enterKeyHint="done"
+          autoComplete="off"
+          autoCorrect="on"
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -109,7 +150,13 @@ export function CaptureBar({ onCapture }: Props) {
         <button
           type="button"
           className="capture__go"
-          onClick={submit}
+          onPointerDown={submitFromPointer}
+          onMouseDown={submitFromPointer}
+          onClick={(e) => {
+            // Keyboard activation lands here; pointer path is guarded against double-fire.
+            e.preventDefault()
+            submit()
+          }}
           disabled={!value.trim()}
         >
           Capture
