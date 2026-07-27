@@ -50,9 +50,19 @@ export type PushSendResult = {
   pruned: number
 }
 
+export type PushPayloadExtras = {
+  /** Deep-link target task (deterministic SMS id when available). */
+  taskId?: string
+  /** Context list id for the focused task. */
+  listId?: string
+  /** Absolute-path URL opened on notification click, e.g. /?focus=<taskId>. */
+  url?: string
+}
+
 /**
  * Send a web push to every stored subscription.
  * Title is always "Lana OS"; body is the SMS confirmation text.
+ * Optional task/list ids power notification deep-links.
  * Prunes 404/410 subscriptions. Soft no-op when VAPID or KV unset.
  */
 export async function sendPushToAll(
@@ -64,6 +74,7 @@ export async function sendPushToAll(
     send?: typeof webpush.sendNotification
     setVapid?: typeof webpush.setVapidDetails
   } = {},
+  extras: PushPayloadExtras = {},
 ): Promise<PushSendResult> {
   const vapid = readVapidConfig(env)
   if (!vapid) return { sent: 0, failed: 0, pruned: 0 }
@@ -78,9 +89,18 @@ export async function sendPushToAll(
   const subs = await list(env)
   if (subs.length === 0) return { sent: 0, failed: 0, pruned: 0 }
 
+  const taskId = extras.taskId?.trim() || undefined
+  const listId = extras.listId?.trim() || undefined
+  const url =
+    extras.url?.trim() ||
+    (taskId ? `/?focus=${encodeURIComponent(taskId)}` : '/')
+
   const payload = JSON.stringify({
     title: 'Lana OS',
     body,
+    ...(taskId ? { taskId } : {}),
+    ...(listId ? { listId } : {}),
+    url,
   })
 
   let sent = 0

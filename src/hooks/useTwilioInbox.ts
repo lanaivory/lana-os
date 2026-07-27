@@ -18,7 +18,10 @@ const POLL_MS = 2 * 60_000
  * Exposes checkNow() for an immediate pull from the header.
  */
 export function useTwilioInbox(
-  capture: (raw: string, opts?: { fromText?: boolean }) => void,
+  capture: (
+    raw: string,
+    opts?: { fromText?: boolean; messageSid?: string },
+  ) => void,
 ) {
   const [connected, setConnected] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -58,7 +61,10 @@ export function useTwilioInbox(
         for (const msg of fresh) {
           const body = msg.body.trim()
           if (body) {
-            captureRef.current(body, { fromText: true })
+            captureRef.current(body, {
+              fromText: true,
+              messageSid: msg.sid,
+            })
           }
           consumedRef.current = markConsumed(consumedRef.current, msg.sid)
         }

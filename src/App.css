@@ -43,7 +43,8 @@
   --shadow: 0 14px 28px rgba(60, 40, 20, 0.1);
 }
 
-/* Top bar */
+/* Top bar — safe-area-inset-top keeps content below iOS status bar / notch
+   when installed as a standalone PWA (viewport-fit=cover). */
 .topbar {
   position: sticky;
   top: 0;
@@ -52,7 +53,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 16px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
   backdrop-filter: blur(14px);
@@ -744,6 +745,25 @@ body.is-resizing * {
   border-color: var(--line);
 }
 
+.task.is-focus-flash {
+  animation: task-focus-flash 2.1s ease;
+}
+
+@keyframes task-focus-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+    background: color-mix(in srgb, var(--accent) 28%, var(--bg-card));
+  }
+  25% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 22%, var(--bg-card));
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background: transparent;
+  }
+}
+
 .task.is-dragging {
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   box-shadow: var(--shadow);
@@ -1290,7 +1310,7 @@ body.is-resizing * {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    padding: 10px 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
   }
 
   .topbar__brand {
@@ -1473,31 +1493,34 @@ body.is-resizing * {
     border-radius: 5px;
   }
 
-  /* Compact time pill — frees horizontal room for the title */
+  /* Compact time pill — noticeably narrower so agenda titles keep room */
   .task__time-wrap {
     width: auto;
-    max-width: none;
+    max-width: 1.85rem;
     margin-top: 0;
     overflow: visible;
+    flex: 0 0 auto;
   }
 
   .task__time-pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.15rem;
-    max-width: 2.85rem;
-    min-height: 26px;
-    padding: 1px 5px;
+    box-sizing: border-box;
+    width: auto;
+    min-width: 1.15rem;
+    max-width: 1.85rem;
+    min-height: 18px;
+    padding: 0 2px;
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: 4px;
     background: color-mix(in srgb, var(--bg) 55%, transparent);
     color: var(--muted);
     font: inherit;
-    font-size: 0.62rem;
+    font-size: 0.52rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.045em;
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;

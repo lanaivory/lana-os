@@ -78,10 +78,49 @@ describe('webPush', () => {
       JSON.stringify({
         title: 'Lana OS',
         body: 'Got it ✅ dentist → Appointments',
+        url: '/',
       }),
     )
     expect(remove).toHaveBeenCalledTimes(1)
     expect(remove).toHaveBeenCalledWith(dead, expect.anything())
     expect(result).toEqual({ sent: 1, failed: 1, pruned: 1 })
+  })
+
+  it('includes task/list deep-link fields in the payload', async () => {
+    const alive: StoredPushSubscription = {
+      endpoint: 'https://push.example/alive',
+      keys: { p256dh: 'p1', auth: 'a1' },
+    }
+    const send = vi.fn(async () => undefined)
+    const setVapid = vi.fn()
+
+    await sendPushToAll(
+      'Got it ✅ dentist → Appointments',
+      {
+        VAPID_PUBLIC_KEY: 'pub',
+        VAPID_PRIVATE_KEY: 'priv',
+        VAPID_SUBJECT: 'mailto:a@b.c',
+      },
+      {
+        list: async () => [alive],
+        send: send as never,
+        setVapid: setVapid as never,
+      },
+      {
+        taskId: 'sms_SM123_0',
+        listId: 'appointments',
+      },
+    )
+
+    expect(send).toHaveBeenCalledWith(
+      alive,
+      JSON.stringify({
+        title: 'Lana OS',
+        body: 'Got it ✅ dentist → Appointments',
+        taskId: 'sms_SM123_0',
+        listId: 'appointments',
+        url: '/?focus=sms_SM123_0',
+      }),
+    )
   })
 })

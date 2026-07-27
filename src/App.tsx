@@ -28,6 +28,12 @@ import {
   isPlaylistId,
   orderedListTasks,
 } from './lib/board'
+import {
+  cardIdForTask,
+  clearFocusFromUrl,
+  readFocusTaskId,
+  scrollTaskIntoBoardView,
+} from './lib/focusTask'
 import type { PlaylistId } from './lib/types'
 import './App.css'
 
@@ -56,6 +62,9 @@ export default function App() {
     | null
   >(null)
   const [now, setNow] = useState(() => new Date())
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(() =>
+    readFocusTaskId(),
+  )
 
   // Mouse: short distance drag from handles (and task rows via mouse-only listeners).
   // Touch: TouchSensor listeners are only attached on drag handles, so a normal
@@ -72,6 +81,104 @@ export default function App() {
     const id = window.setInterval(() => setNow(new Date()), 30_000)
     return () => window.clearInterval(id)
   }, [])
+
+  // Notification deep-link: /?focus=<taskId> (and SW postMessage fallback).
+  useEffect(() => {
+    const applyFocusParam = () => {
+      const id = readFocusTaskId()
+      if (id) setPendingFocusId(id)
+    }
+    applyFocusParam()
+    const onPop = () => applyFocusParam()
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null
+      if (!data || data.type !== 'lana-focus' || typeof data.url !== 'string') {
+        return
+      }
+      try {
+        const url = new URL(data.url, window.location.origin)
+        const id = url.searchParams.get('focus')?.trim()
+        if (id) {
+          window.history.replaceState(
+            window.history.state,
+            '',
+            `${url.pathname}${url.search}${url.hash}`,
+          )
+          setPendingFocusId(id)
+        }
+      } catch {
+        // ignore malformed SW messages
+      }
+    }
+    window.addEventListener('popstate', onPop)
+    navigator.serviceWorker?.addEventListener('message', onMessage)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      navigator.serviceWorker?.removeEventListener('message', onMessage)
+    }
+  }, [])
+
+  // Pull inbox when a deep-link is pending so SMS tasks materialize.
+  useEffect(() => {
+    if (!pendingFocusId) return
+    void checkNow()
+    const giveUp = window.setTimeout(() => {
+      clearFocusFromUrl()
+      setPendingFocusId((current) =>
+        current === pendingFocusId ? null : current,
+      )
+    }, 12_000)
+    return () => window.clearTimeout(giveUp)
+  }, [pendingFocusId, checkNow])
+
+  const boardState = store.state
+  const toggleListCollapsed = store.toggleListCollapsed
+  const togglePlaylistCollapsed = store.togglePlaylistCollapsed
+
+  useEffect(() => {
+    if (!pendingFocusId) return
+
+    const task = boardState.tasks[pendingFocusId]
+    if (!task) return
+
+    const cardId = cardIdForTask(boardState, pendingFocusId)
+    if (cardId && isPlaylistId(cardId)) {
+      if (boardState.collapsedPlaylists[cardId]) {
+        togglePlaylistCollapsed(cardId)
+        return
+      }
+    } else if (cardId) {
+      const list = boardState.lists.find((l) => l.id === cardId)
+      if (list?.collapsed) {
+        toggleListCollapsed(cardId)
+        return
+      }
+    }
+
+    let attempts = 0
+    let timer = 0
+    const tryScroll = () => {
+      attempts += 1
+      if (scrollTaskIntoBoardView(pendingFocusId)) {
+        clearFocusFromUrl()
+        setPendingFocusId(null)
+        return
+      }
+      if (attempts < 12) {
+        timer = window.setTimeout(tryScroll, 80)
+      } else {
+        clearFocusFromUrl()
+        setPendingFocusId(null)
+      }
+    }
+    timer = window.setTimeout(tryScroll, 40)
+    return () => window.clearTimeout(timer)
+  }, [
+    pendingFocusId,
+    boardState,
+    toggleListCollapsed,
+    togglePlaylistCollapsed,
+  ])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
