@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPushConfirmation,
   buildSmsConfirmation,
   buildTwimlMessage,
   classifyInboundTodos,
@@ -45,6 +46,44 @@ describe('buildSmsConfirmation', () => {
 
   it('handles empty body', () => {
     expect(buildSmsConfirmation('   ')).toBe('Got it ✅')
+  })
+})
+
+describe('buildPushConfirmation', () => {
+  it('puts the destination list in the notification title', () => {
+    expect(buildPushConfirmation('Buy oat milk', 'SMpush1')).toEqual({
+      title: 'Added to Errands',
+      body: 'Buy oat milk',
+      taskId: 'sms_SMpush1_0',
+      listId: 'errands',
+      url: '/?focus=sms_SMpush1_0',
+    })
+  })
+
+  it('lists each to-do with its list when several arrive', () => {
+    expect(
+      buildPushConfirmation('Book dentist checkup\nReply to Maya', 'SMmulti'),
+    ).toEqual({
+      title: 'Added to your lists',
+      body:
+        '• Book dentist checkup → Appointments\n• Reply to Maya → Follow-ups',
+      taskId: 'sms_SMmulti_0',
+      listId: 'appointments',
+      url: '/?focus=sms_SMmulti_0',
+    })
+  })
+
+  it('returns null for empty body', () => {
+    expect(buildPushConfirmation('   ')).toBeNull()
+  })
+
+  it('omits taskId/focus when MessageSid is missing', () => {
+    expect(buildPushConfirmation('Buy oat milk')).toEqual({
+      title: 'Added to Errands',
+      body: 'Buy oat milk',
+      listId: 'errands',
+      url: '/',
+    })
   })
 })
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   enablePushNotifications,
   resolvePushUiState,
+  syncPushSubscription,
   type PushUiState,
 } from '../lib/webPushClient'
 
@@ -10,9 +11,17 @@ export function usePushNotifications() {
 
   useEffect(() => {
     let cancelled = false
-    void resolvePushUiState().then((next) => {
+    void (async () => {
+      // Re-POST an existing browser subscription so server KV stays current.
+      const synced = await syncPushSubscription()
+      if (cancelled) return
+      if (synced === 'enabled' || synced === 'denied' || synced === 'needs-install' || synced === 'unsupported') {
+        setState(synced)
+        return
+      }
+      const next = await resolvePushUiState()
       if (!cancelled) setState(next)
-    })
+    })()
     return () => {
       cancelled = true
     }

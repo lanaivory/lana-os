@@ -84,7 +84,13 @@ export async function postPushSubscribe(
       },
       body: JSON.stringify(subscription),
     })
-    return res.ok
+    if (!res.ok) return false
+    const data = (await res.json().catch(() => null)) as {
+      ok?: unknown
+      saved?: unknown
+    } | null
+    // Require an explicit saved:true so a 200 with KV unset is not treated as success.
+    return data?.ok === true && data?.saved === true
   } catch {
     return false
   }
@@ -132,6 +138,26 @@ export async function resolvePushUiState(): Promise<PushUiState> {
   if (existing && Notification.permission === 'granted') return 'enabled'
 
   return 'default'
+}
+
+/**
+ * If the browser already granted permission and has a PushSubscription,
+ * re-POST it to the server so KV stays in sync after deploys / key rotations.
+ * Does not prompt. Returns the resulting UI state.
+ */
+export async function syncPushSubscription(): Promise<PushUiState> {
+  if (!isPushSupported()) {
+    return isIosDevice() && !isStandaloneDisplay() ? 'needs-install' : 'unsupported'
+  }
+  if (isIosDevice() && !isStandaloneDisplay()) return 'needs-install'
+  if (Notification.permission === 'denied') return 'denied'
+  if (Notification.permission !== 'granted') return 'default'
+
+  const sub = await getExistingPushSubscription()
+  if (!sub) return 'default'
+
+  const ok = await postPushSubscribe(sub.toJSON())
+  return ok ? 'enabled' : 'default'
 }
 
 /**

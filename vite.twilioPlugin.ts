@@ -6,9 +6,9 @@ import {
   removePushSubscription,
 } from './server/pushStore.ts'
 import {
+  buildPushConfirmation,
   buildSmsConfirmation,
   buildTwimlMessage,
-  classifyInboundTodos,
   extractTwilioBody,
   extractTwilioMessageSid,
 } from './server/smsConfirm.ts'
@@ -85,16 +85,14 @@ export function twilioInboxPlugin(): Plugin {
           const body = extractTwilioBody(rawBody)
           const messageSid = extractTwilioMessageSid(rawBody)
           const confirmation = buildSmsConfirmation(body)
-          const todos = classifyInboundTodos(body, messageSid)
-          if (todos.length > 0) {
+          const push = buildPushConfirmation(body, messageSid)
+          if (push) {
             try {
-              const first = todos[0]
-              await sendPushToAll(confirmation, process.env, {}, {
-                taskId: first.taskId,
-                listId: first.listId,
-                url: first.taskId
-                  ? `/?focus=${encodeURIComponent(first.taskId)}`
-                  : '/',
+              await sendPushToAll(push.body, process.env, {}, {
+                title: push.title,
+                taskId: push.taskId,
+                listId: push.listId,
+                url: push.url,
               })
             } catch {
               // soft-fail
@@ -189,7 +187,11 @@ export function twilioInboxPlugin(): Plugin {
             return
           }
           const saved = await addPushSubscription(sub)
-          sendJson(res, 200, { ok: true, saved })
+          if (!saved) {
+            sendJson(res, 503, { error: 'Push storage not configured', saved: false })
+            return
+          }
+          sendJson(res, 200, { ok: true, saved: true })
         } catch {
           sendJson(res, 500, { error: 'Failed to save subscription' })
         }
