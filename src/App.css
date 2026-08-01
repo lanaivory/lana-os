@@ -243,22 +243,24 @@
   font-weight: 600;
 }
 
-/* Capture — pinned app-shell footer (sticky so it cannot scroll away on iOS) */
+/* Capture — pinned flush to the bottom edge (chatbot-style input).
+   Bottom padding is ONLY the safe-area inset — no extra gap under the shell. */
 .capture {
   position: sticky;
   bottom: 0;
   flex: 0 0 auto;
   flex-shrink: 0;
   z-index: 50;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 16px 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
   backdrop-filter: blur(16px);
 }
 
-/* Keyboard open: drop home-indicator padding — visualViewport already ends above keyboard */
+/* Keyboard open: visualViewport already ends above keyboard — no bottom inset. */
 .os--keyboard-open .capture {
-  padding-bottom: 10px;
+  padding-bottom: 0;
 }
 
 .os--keyboard-open .capture.is-focused .capture__shell {
@@ -2148,17 +2150,19 @@ body.is-resizing * {
     bottom: 0;
     flex: 0 0 auto;
     flex-shrink: 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    /* Flush to bottom edge; only home-indicator inset below the shell. */
+    padding: 8px 12px 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .os--keyboard-open .capture {
-    padding-bottom: 10px;
+    padding-bottom: 0;
   }
 
   /* Focused + unfocused share the same shell metrics — no padding/gap drift. */
   .capture__shell,
   .capture.is-focused .capture__shell {
-    padding: 12px 12px 12px 14px;
+    padding: 10px 12px 10px 14px;
     gap: 10px;
   }
 
