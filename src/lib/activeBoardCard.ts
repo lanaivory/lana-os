@@ -1,6 +1,6 @@
 const ACTIVE_CARD_KEY = 'lana-os:active-board-card'
 
-/** Last-viewed board card on the mobile-native single-list layout. */
+/** Last scroll-target board card on the mobile-native vertical list stack. */
 export function loadActiveBoardCardId(): string | null {
   try {
     const value = localStorage.getItem(ACTIVE_CARD_KEY)?.trim()

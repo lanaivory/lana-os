@@ -72,7 +72,7 @@ export function useBoardGestures(
   opts: {
     boardZoomOut: boolean
     onBoardZoomOutChange: (zoomOut: boolean) => void
-    /** When false (mobile-native single-list), skip multi-column gestures. */
+    /** When false (mobile-native stacked lists), skip multi-column gestures. */
     enabled?: boolean
   },
 ) {
