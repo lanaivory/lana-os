@@ -62,8 +62,66 @@ function lockDocumentScroll(): void {
   }
 }
 
+function scrollBoardToTarget(
+  boardEl: HTMLElement,
+  target: HTMLElement,
+  align: 'nearest' | 'start',
+): void {
+  const boardRect = boardEl.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+
+  if (align === 'start') {
+    // Desktop columns: leading-edge X. Mobile stack: top-edge Y.
+    const deltaX = targetRect.left - boardRect.left
+    const deltaY = targetRect.top - boardRect.top - 8
+    if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+      boardEl.scrollBy({ left: deltaX, top: deltaY, behavior: 'smooth' })
+    }
+    return
+  }
+
+  let left = 0
+  let top = 0
+  const deltaLeft = targetRect.left - boardRect.left
+  const deltaRight = targetRect.right - boardRect.right
+  if (deltaLeft < 0) left = deltaLeft - 12
+  else if (deltaRight > 0) left = deltaRight + 12
+
+  const deltaTop = targetRect.top - boardRect.top
+  const deltaBottom = targetRect.bottom - boardRect.bottom
+  if (deltaTop < 0) top = deltaTop - 8
+  else if (deltaBottom > 0) top = deltaBottom + 8
+
+  if (left !== 0 || top !== 0) {
+    boardEl.scrollBy({ left, top, behavior: 'smooth' })
+  }
+}
+
 /**
- * Horizontally scroll the board so the card is visible, then scroll/highlight the task.
+ * Scroll the board so a list/playlist card is visible.
+ * Desktop: horizontal columns. Mobile-native: vertical stack.
+ */
+export function scrollCardIntoBoardView(
+  cardId: string,
+  opts: { align?: 'nearest' | 'start' } = {},
+): boolean {
+  if (typeof document === 'undefined') return false
+  const cardEl = document.querySelector<HTMLElement>(
+    `[data-card-id="${cssEscape(cardId)}"]`,
+  )
+  const boardEl = document.querySelector<HTMLElement>('.board')
+  if (!cardEl || !boardEl) return false
+
+  const align = opts.align ?? 'nearest'
+  const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
+  const target = align === 'start' && colWrap ? colWrap : cardEl
+  scrollBoardToTarget(boardEl, target, align)
+  lockDocumentScroll()
+  return true
+}
+
+/**
+ * Scroll the board so the card is visible, then scroll/highlight the task.
  * Returns true when the task element was found and focused.
  */
 export function scrollTaskIntoBoardView(
@@ -83,24 +141,7 @@ export function scrollTaskIntoBoardView(
   if (boardEl && cardEl) {
     const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
     const target = align === 'start' && colWrap ? colWrap : cardEl
-    const boardRect = boardEl.getBoundingClientRect()
-    const targetRect = target.getBoundingClientRect()
-
-    if (align === 'start') {
-      // Mobile snap-scroll: leading-edge align (matches scroll-padding-left: 0).
-      const delta = targetRect.left - boardRect.left
-      if (Math.abs(delta) > 1) {
-        boardEl.scrollBy({ left: delta, behavior: 'smooth' })
-      }
-    } else {
-      const deltaLeft = targetRect.left - boardRect.left
-      const deltaRight = targetRect.right - boardRect.right
-      if (deltaLeft < 0) {
-        boardEl.scrollBy({ left: deltaLeft - 12, behavior: 'smooth' })
-      } else if (deltaRight > 0) {
-        boardEl.scrollBy({ left: deltaRight + 12, behavior: 'smooth' })
-      }
-    }
+    scrollBoardToTarget(boardEl, target, align)
   }
 
   scrollIntoScrollParent(taskEl)

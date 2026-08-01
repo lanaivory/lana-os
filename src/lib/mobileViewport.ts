@@ -1,4 +1,4 @@
-/** Mobile-native board breakpoint — keep in sync with App.css max-width: 768px. */
+/** Mobile-native vertical list stack breakpoint — keep in sync with App.css max-width: 768px. */
 export const MOBILE_NATIVE_MQ = '(max-width: 768px)'
 
 /** True for phones / narrow viewports (incl. installed iOS PWA on phone). */
