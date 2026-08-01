@@ -232,7 +232,8 @@ export function PlaylistCard({
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
 
-  if (sortByTime && playlistId === 'today') {
+  // Desktop Today can still sort-by-time; mobile pager keeps manual order.
+  if (sortByTime && playlistId === 'today' && !pagerMode) {
     tasks = [...tasks].sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1
       if (!a.time && !b.time) return 0
@@ -251,9 +252,8 @@ export function PlaylistCard({
 
   const showTime = playlistId === 'today' || playlistId === 'tomorrow'
   const width = state.cardWidths[cardId]
-  // Pager: day label + count only (no phone-clock duplicate). Desktop Today keeps meta.
+  // Pager: day label + count only. Desktop Today keeps clock/date + sort.
   const showFeaturedMeta = featured && !collapsed && !pagerMode
-  const showPagerSort = pagerMode && featured && !collapsed && playlistId === 'today'
 
   return (
     <SortableCardShell
@@ -316,19 +316,6 @@ export function PlaylistCard({
         </div>
       )}
 
-      {showPagerSort && (
-        <div className="card__today-meta card__today-meta--pager">
-          <label className="sort-toggle">
-            <input
-              type="checkbox"
-              checked={sortByTime}
-              onChange={(e) => onSortByTimeChange?.(e.target.checked)}
-            />
-            <span>Sort by time</span>
-          </label>
-        </div>
-      )}
-
       {!collapsed && (
         <>
           <TaskDropBody
@@ -355,7 +342,7 @@ export function PlaylistCard({
                       sortableId={`task:playlist:${playlistId}:${task.id}`}
                       compact
                       showTime={showTime}
-                      showListTag
+                      showListTag={!pagerMode}
                       searchMatch={
                         Boolean(q) && task.text.toLowerCase().includes(q)
                       }
@@ -376,7 +363,9 @@ export function PlaylistCard({
               </SortableContext>
             )}
           </TaskDropBody>
-          <AddTaskRow onAdd={(text) => onAddTask(playlistId, text)} />
+          {!pagerMode && (
+            <AddTaskRow onAdd={(text) => onAddTask(playlistId, text)} />
+          )}
         </>
       )}
     </SortableCardShell>
