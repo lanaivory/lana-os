@@ -1614,17 +1614,20 @@ body.is-resizing * {
   /*
    * Fixed agenda height so the pager cannot collapse to header-only.
    * Task rows live inside each page and scroll vertically on overflow.
+   * Use vh (not only dvh) so device-emulation / older engines still get ~40%.
    */
   .mobile-agenda {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    height: max(220px, 40dvh);
+    height: 40vh;
+    height: 40dvh;
     min-height: 220px;
+    max-height: 50vh;
     max-height: 50dvh;
     overflow: hidden;
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
   }
 
   .mobile-agenda__chrome {
