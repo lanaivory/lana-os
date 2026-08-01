@@ -1606,7 +1606,8 @@ body.is-resizing * {
     padding: 0;
     overflow: hidden;
     scroll-snap-type: none;
-    touch-action: pan-y;
+    /* Don't lock pan-y here — agenda pager needs horizontal swipe. */
+    touch-action: manipulation;
     overscroll-behavior: none;
   }
 
@@ -1687,7 +1688,8 @@ body.is-resizing * {
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-    touch-action: pan-x;
+    /* Horizontal page swipe + vertical scroll inside each day page. */
+    touch-action: pan-x pan-y;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -1806,6 +1808,10 @@ body.is-resizing * {
 
   .board--native .card--agenda-page .card__head {
     padding: 4px 4px 2px;
+  }
+
+  .board--native .card--agenda-page .card__toggle {
+    cursor: default;
   }
 
   .board--native .card--agenda-page .card__body,
