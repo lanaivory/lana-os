@@ -12,7 +12,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Board } from './components/Board'
 import { CaptureBar } from './components/CaptureBar'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -36,7 +36,7 @@ import {
   scrollTaskIntoBoardView,
 } from './lib/focusTask'
 import { cardNeedsExpand, findFirstSearchMatch } from './lib/searchNav'
-import type { PlaylistId } from './lib/types'
+import type { AppState, PlaylistId } from './lib/types'
 import './App.css'
 
 /** Mobile board snap breakpoint — keep in sync with App.css max-width: 720px. */
@@ -52,11 +52,15 @@ type ActiveDrag =
 
 export default function App() {
   const store = useLanaStore()
+  const boardStateRef = useRef(store.state)
+  boardStateRef.current = store.state
+  const getBoardState = useCallback(() => boardStateRef.current, [])
+  const refreshFromCloud = store.refreshFromCloud
   const {
     connected: textCaptureConnected,
     checking: textCaptureChecking,
     checkNow,
-  } = useTwilioInbox(store.capture)
+  } = useTwilioInbox(store.capture, getBoardState)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [searchFocusSignal, setSearchFocusSignal] = useState(0)
@@ -156,18 +160,59 @@ export default function App() {
     }
   }, [])
 
-  // Pull inbox when a deep-link is pending so SMS tasks materialize.
+  // Pull cloud board (+ inbox fallback) when a deep-link is pending so SMS
+  // tasks materialize even if the push beat the first cloud poll.
   useEffect(() => {
     if (!pendingFocusId) return
-    void checkNow()
+
+    let cancelled = false
+    let attempt = 0
+    const maxAttempts = 10
+    const intervalMs = 500
+    let timer = 0
+
+    const tick = async () => {
+      if (cancelled) return
+      attempt += 1
+      let remote: AppState | null = null
+      try {
+        remote = await refreshFromCloud()
+      } catch {
+        // soft-fail
+      }
+      // Inbox remains a fallback when KV/webhook write was unavailable.
+      if (attempt === 1 || attempt === 4) {
+        void checkNow()
+      }
+      if (cancelled) return
+      if (
+        remote?.tasks[pendingFocusId] ||
+        boardStateRef.current.tasks[pendingFocusId]
+      ) {
+        return
+      }
+      if (attempt < maxAttempts) {
+        timer = window.setTimeout(() => {
+          void tick()
+        }, intervalMs)
+      }
+    }
+
+    void tick()
+
     const giveUp = window.setTimeout(() => {
       clearFocusFromUrl()
       setPendingFocusId((current) =>
         current === pendingFocusId ? null : current,
       )
     }, 12_000)
-    return () => window.clearTimeout(giveUp)
-  }, [pendingFocusId, checkNow])
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      window.clearTimeout(giveUp)
+    }
+  }, [pendingFocusId, checkNow, refreshFromCloud])
 
   const boardState = store.state
   const toggleListCollapsed = store.toggleListCollapsed

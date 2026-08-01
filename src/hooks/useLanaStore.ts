@@ -5,6 +5,11 @@ import {
   withListOrderAppend,
   withListOrderRemove,
 } from '../lib/board'
+import {
+  applyCaptureToState,
+  mergeMissingSmsTasks,
+  resolveActiveListId,
+} from '../lib/capturePipeline'
 import { classifyTask } from '../lib/classifier'
 import {
   fetchCloudState,
@@ -17,11 +22,8 @@ import {
   uncompleteTask,
 } from '../lib/completion'
 import { createId } from '../lib/id'
-import { splitCaptureText } from '../lib/parseCapture'
-import { smsTaskId } from '../lib/smsTaskIds'
 import { applyMorningRollover } from '../lib/rollover'
 import { loadState, saveState } from '../lib/storage'
-import { routeTimingWords } from '../lib/timing'
 import {
   permanentlyDeleteTrashEntry,
   purgeExpiredTrash,
@@ -58,13 +60,6 @@ function stripFromAllPlaylists(state: AppState, taskId: string): AppState['playl
   }
 }
 
-/** Prefer classifier target; fall back if that list is soft-deleted. */
-function resolveActiveListId(state: AppState, preferred: string): string {
-  if (state.lists.some((l) => l.id === preferred)) return preferred
-  if (state.lists.some((l) => l.id === 'random')) return 'random'
-  return state.lists[0]?.id ?? preferred
-}
-
 export function useLanaStore() {
   const [state, setState] = useState<AppState>(() =>
     withPurgeAndRollover(loadState()),
@@ -95,10 +90,25 @@ export function useLanaStore() {
     pendingCloudSave.current = true
     if (saveTimer.current != null) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
-      const snapshot = stateRef.current
-      void pushCloudState(snapshot).finally(() => {
-        pendingCloudSave.current = false
-      })
+      void (async () => {
+        try {
+          // Merge any SMS tasks the webhook wrote while we were editing locally.
+          const remote = await fetchCloudState()
+          let snapshot = stateRef.current
+          if (remote) {
+            const merged = mergeMissingSmsTasks(snapshot, remote)
+            if (merged !== snapshot) {
+              applyingRemote.current = true
+              snapshot = merged
+              setState(merged)
+              saveState(merged)
+            }
+          }
+          await pushCloudState(snapshot)
+        } finally {
+          pendingCloudSave.current = false
+        }
+      })()
     }, CLOUD_SAVE_DEBOUNCE_MS)
 
     return () => {
@@ -197,54 +207,37 @@ export function useLanaStore() {
 
   const capture = useCallback(
     (raw: string, opts?: { fromText?: boolean; messageSid?: string }): string[] => {
-      const pieces = splitCaptureText(raw)
-      if (pieces.length === 0) return []
-
-      const createdIds: string[] = []
-
+      let createdIds: string[] = []
       commit((prev) => {
-        const tasks = { ...prev.tasks }
-        let listOrders = { ...prev.listOrders }
-        const playlists = {
-          today: [...prev.playlists.today],
-          tomorrow: [...prev.playlists.tomorrow],
-          week: [...prev.playlists.week],
-        }
-
-        pieces.forEach((text, index) => {
-          const classified = classifyTask(text)
-          const listId = resolveActiveListId(prev, classified.listId)
-          const { playlistId } = routeTimingWords(text)
-          const sid = opts?.messageSid?.trim()
-          const id = sid ? smsTaskId(sid, index) : createId()
-          // Inbox re-poll / multi-device: keep the deterministic SMS id stable.
-          if (tasks[id]) return
-          const task: Task = {
-            id,
-            text,
-            listId,
-            completed: false,
-            completedAt: null,
-            createdAt: Date.now(),
-            time: null,
-            overdue: false,
-            isNew: Boolean(opts?.fromText),
-          }
-          tasks[id] = task
-          createdIds.push(id)
-          listOrders = withListOrderAppend(listOrders, listId, id)
-          if (playlistId && !playlists[playlistId].includes(id)) {
-            playlists[playlistId] = [...playlists[playlistId], id]
-          }
-        })
-
-        return { ...prev, tasks, playlists, listOrders }
+        const result = applyCaptureToState(prev, raw, opts)
+        createdIds = result.createdIds
+        return result.state
       })
-
       return createdIds
     },
     [commit],
   )
+
+  /**
+   * Pull shared KV board now (used by notification deep-links).
+   * Returns the applied remote state, or null when unavailable / blocked.
+   */
+  const refreshFromCloud = useCallback(async (): Promise<AppState | null> => {
+    const remote = await fetchCloudState()
+    if (!remote) return stateRef.current
+    // Prefer remote when focusing a push deep-link even if a local save is pending —
+    // SMS webhook writes land in KV first and must win for the task to appear.
+    const next = withPurgeAndRollover(remote)
+    if (!statesEqual(next, stateRef.current)) {
+      applyingRemote.current = true
+      // Don't clobber an in-progress local edit push forever; clear pending so
+      // subsequent polls can continue, then let the save effect skip this apply.
+      pendingCloudSave.current = false
+      setState(next)
+      saveState(next)
+    }
+    return next
+  }, [])
 
   /** Clear NEW badge without pushing undo history. */
   const clearNew = useCallback((taskId: string) => {
@@ -675,6 +668,7 @@ export function useLanaStore() {
     canUndo: undoStack.length > 0,
     undo,
     capture,
+    refreshFromCloud,
     clearNew,
     setTaskList,
     setTaskText,

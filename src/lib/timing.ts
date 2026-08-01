@@ -1,4 +1,4 @@
-import type { PlaylistId } from './types'
+import type { PlaylistId } from './types.js'
 
 /**
  * Timing-word router: detects schedule intent in free text

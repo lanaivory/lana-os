@@ -1,7 +1,8 @@
 import { classifyTask } from '../src/lib/classifier.js'
 import { splitCaptureText } from '../src/lib/parseCapture.js'
 import { smsTaskId } from '../src/lib/smsTaskIds.js'
-import { DEFAULT_LISTS } from '../src/lib/types.js'
+import { routeTimingWords } from '../src/lib/timing.js'
+import { DEFAULT_LISTS, type PlaylistId } from '../src/lib/types.js'
 
 const TITLE_MAX = 48
 
@@ -23,12 +24,14 @@ export type ClassifiedTodo = {
   text: string
   listId: string
   listName: string
+  /** Timing-word playlist when present (today / tomorrow / week). */
+  playlistId: PlaylistId | null
   /** Present when MessageSid is known — matches client inbox capture ids. */
   taskId?: string
 }
 
 /**
- * Split + classify using the same pipeline as capture (no timing / no storage).
+ * Split + classify using the same pipeline as capture (includes timing words).
  * When `messageSid` is provided, attaches deterministic task ids for push deep-links.
  */
 export function classifyInboundTodos(
@@ -37,12 +40,14 @@ export function classifyInboundTodos(
 ): ClassifiedTodo[] {
   return splitCaptureText(raw).map((text, index) => {
     const { listId } = classifyTask(text)
+    const { playlistId } = routeTimingWords(text)
     const sid = messageSid?.trim()
     return {
       title: shortTitle(text),
       text,
       listId,
       listName: listDisplayName(listId),
+      playlistId,
       ...(sid ? { taskId: smsTaskId(sid, index) } : {}),
     }
   })

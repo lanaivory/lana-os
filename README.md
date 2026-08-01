@@ -47,7 +47,7 @@ Generate a key pair with `npx web-push generate-vapid-keys`, then add the three 
 
 - `GET /api/push-public-key` returns `{ publicKey }` for `PushManager.subscribe`.
 - `POST /api/push-subscribe` / `POST /api/push-unsubscribe` store or remove a browser `PushSubscription` in the Vercel KV set `lana-os-push-subs`. Both use the same `x-app-pass` gate as `/api/state`.
-- After `/api/sms` builds the confirmation (`buildSmsConfirmation`), it fans out a notification titled **Lana OS** with that same body (e.g. `Got it ✅ dentist → Appointments`). Dead endpoints (`404` / `410`) are pruned.
+- After `/api/sms` builds the confirmation (`buildSmsConfirmation`), it writes the to-dos into shared KV (when configured), then fans out a notification titled **Lana OS** with that same body (e.g. `Got it ✅ dentist → Appointments`). Dead endpoints (`404` / `410`) are pruned.
 - In the header, tap **Enable notifications** (user gesture required on iOS). On iPhone, install to the Home Screen first, then open from the icon before enabling.
 
 ## Cloud sync + passcode
@@ -80,7 +80,7 @@ Across devices, the board syncs through Vercel KV:
 
 ## Text capture (Twilio)
 
-Text a thought to your Twilio number and Lana OS imports it through the same capture pipeline (split → classify → timing-route → board). No database — the app polls a Vercel serverless function for new messages, and an optional inbound webhook can reply with a smart confirmation.
+Text a thought to your Twilio number and Lana OS imports it through the same capture pipeline (split → classify → timing-route → board).
 
 Set these environment variables (from the [Twilio Console](https://console.twilio.com/)):
 
@@ -92,7 +92,8 @@ Set these environment variables (from the [Twilio Console](https://console.twili
 
 For local dev, put them in a `.env` file at the project root (never commit secrets). On Vercel, add the same names in Project → Settings → Environment Variables.
 
-- `GET /api/inbox` lists recent inbound SMS (`sid`, `body`, `dateSent`). If any of the three variables are missing, it returns an empty list.
-- The client polls every 2 minutes (plus a header **Check now** button for an immediate pull), runs new message bodies through capture, and stores consumed `sid`s in `localStorage` so nothing is imported twice.
-- When the endpoint responds OK, the header shows a subtle **Text capture connected** indicator.
-- `POST /api/sms` is the Twilio inbound webhook. It runs the message through the same splitter + classifier and replies with TwiML confirming each to-do and its list. It does **not** store board tasks — the board still fills via `/api/inbox` polling — but it does send a web push (when configured) using the same confirmation text. In Twilio, set the number’s **A message comes in** webhook to `https://<your-deployment>/api/sms` using **HTTP POST**.
+- `POST /api/sms` is the Twilio inbound webhook. It runs the message through the same splitter + classifier + timing router, **writes the to-do(s) into the shared KV board** (`lana-os-state`) with deterministic ids (`sms_<MessageSid>_<index>`), marks the MessageSid in `lana-os-ingested-sids`, replies with TwiML confirming each to-do and its list, then sends a web push deep-linked to `/?focus=<taskId>`. In Twilio, set the number’s **A message comes in** webhook to `https://<your-deployment>/api/sms` using **HTTP POST**.
+- `GET /api/inbox` lists recent inbound SMS (`sid`, `body`, `dateSent`) that have **not** already been ingested by `/api/sms`. If any of the three Twilio variables are missing, it returns an empty list.
+- The client still polls every 2 minutes (plus a header **Check now** button) as a fallback when the webhook/KV path is unavailable. Consumed `sid`s are stored in `localStorage`, and messages already present on the board (by SMS task id) are skipped — a texted to-do is added exactly once.
+- Tapping a push notification opens `/?focus=<taskId>`, which immediately refreshes cloud state (retrying for a few seconds) then scrolls to and highlights the task.
+- When the inbox endpoint responds OK, the header shows a subtle **Text capture connected** indicator.
