@@ -72,9 +72,11 @@ export function useBoardGestures(
   opts: {
     boardZoomOut: boolean
     onBoardZoomOutChange: (zoomOut: boolean) => void
+    /** When false (mobile-native single-list), skip multi-column gestures. */
+    enabled?: boolean
   },
 ) {
-  const { boardZoomOut, onBoardZoomOutChange } = opts
+  const { boardZoomOut, onBoardZoomOutChange, enabled = true } = opts
   const [showSnapBack, setShowSnapBack] = useState(false)
   const zoomOutRef = useRef(boardZoomOut)
   const onZoomRef = useRef(onBoardZoomOutChange)
@@ -88,6 +90,10 @@ export function useBoardGestures(
   }, [onBoardZoomOutChange])
 
   useEffect(() => {
+    if (!enabled) {
+      setShowSnapBack(false)
+      return
+    }
     const board = boardRef.current
     if (!board) return
 
@@ -292,7 +298,7 @@ export function useBoardGestures(
       board.removeEventListener('scroll', syncSnapBack)
       endAxis()
     }
-  }, [boardRef])
+  }, [boardRef, enabled])
 
   const snapBackToStart = () => {
     const board = boardRef.current

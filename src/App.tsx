@@ -21,10 +21,17 @@ import type { InsertionState } from './components/InsertionLine'
 import { RecentlyDeletedModal } from './components/RecentlyDeletedModal'
 import { SettingsModal } from './components/SettingsModal'
 import { useLanaStore } from './hooks/useLanaStore'
+import { useMediaQuery } from './hooks/useMediaQuery'
 import { useTwilioInbox } from './hooks/useTwilioInbox'
+import {
+  loadActiveBoardCardId,
+  resolveActiveBoardCardId,
+  saveActiveBoardCardId,
+} from './lib/activeBoardCard'
 import {
   cardIdFromOverTarget,
   findPlaylistContaining,
+  flattenBoard,
   isPlaylistId,
   orderedListTasks,
 } from './lib/board'
@@ -35,15 +42,10 @@ import {
   readFocusTaskId,
   scrollTaskIntoBoardView,
 } from './lib/focusTask'
+import { MOBILE_NATIVE_MQ } from './lib/mobileViewport'
 import { cardNeedsExpand, findFirstSearchMatch } from './lib/searchNav'
 import type { PlaylistId } from './lib/types'
 import './App.css'
-
-/** Mobile board snap breakpoint — keep in sync with App.css max-width: 720px. */
-function isMobileBoardViewport(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(max-width: 720px)').matches
-}
 
 type ActiveDrag =
   | { type: 'task'; taskId: string; from: 'playlist' | 'list'; containerId: string }
@@ -65,6 +67,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
   const [boardZoomOut, setBoardZoomOut] = useState(loadBoardZoomOut)
+  const mobileNative = useMediaQuery(MOBILE_NATIVE_MQ)
+  const [activeCardId, setActiveCardIdState] = useState<string | null>(
+    loadActiveBoardCardId,
+  )
+  const setActiveCardId = useCallback((cardId: string) => {
+    saveActiveBoardCardId(cardId)
+    setActiveCardIdState(cardId)
+  }, [])
   const [confirmDelete, setConfirmDelete] = useState<
     | { kind: 'task'; taskId: string; text: string }
     | { kind: 'list'; listId: string; name: string; taskCount: number }
@@ -74,7 +84,7 @@ export default function App() {
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(() =>
     readFocusTaskId(),
   )
-  /** After manual capture on mobile: snap the board to where the task landed. */
+  /** After manual capture on mobile: reveal the list where the task landed. */
   const [pendingCaptureRevealId, setPendingCaptureRevealId] = useState<
     string | null
   >(null)
@@ -172,6 +182,22 @@ export default function App() {
   const boardState = store.state
   const toggleListCollapsed = store.toggleListCollapsed
   const togglePlaylistCollapsed = store.togglePlaylistCollapsed
+  const boardCardIds = useMemo(
+    () => flattenBoard(boardState.boardColumns),
+    [boardState.boardColumns],
+  )
+  const resolvedActiveCardId = useMemo(
+    () => resolveActiveBoardCardId(boardCardIds, activeCardId),
+    [boardCardIds, activeCardId],
+  )
+
+  // Keep the mobile active list valid when cards are removed.
+  useEffect(() => {
+    if (!mobileNative || !resolvedActiveCardId) return
+    if (activeCardId !== resolvedActiveCardId) {
+      setActiveCardId(resolvedActiveCardId)
+    }
+  }, [mobileNative, activeCardId, resolvedActiveCardId, setActiveCardId])
 
   useEffect(() => {
     if (!pendingFocusId) return
@@ -180,6 +206,9 @@ export default function App() {
     if (!task) return
 
     const cardId = cardIdForTask(boardState, pendingFocusId)
+    if (cardId && mobileNative) {
+      setActiveCardId(cardId)
+    }
     if (cardId && isPlaylistId(cardId)) {
       if (boardState.collapsedPlaylists[cardId]) {
         togglePlaylistCollapsed(cardId)
@@ -214,11 +243,13 @@ export default function App() {
   }, [
     pendingFocusId,
     boardState,
+    mobileNative,
+    setActiveCardId,
     toggleListCollapsed,
     togglePlaylistCollapsed,
   ])
 
-  // Manual capture → snap/highlight destination list (mobile only; playlists win).
+  // Manual capture → reveal/highlight destination list (mobile only; playlists win).
   useEffect(() => {
     if (!pendingCaptureRevealId) return
 
@@ -229,6 +260,9 @@ export default function App() {
     }
 
     const cardId = cardIdForTask(boardState, pendingCaptureRevealId)
+    if (cardId && mobileNative) {
+      setActiveCardId(cardId)
+    }
     if (cardId) {
       const expand = cardNeedsExpand(boardState, cardId)
       if (expand?.kind === 'playlist') {
@@ -265,6 +299,8 @@ export default function App() {
   }, [
     pendingCaptureRevealId,
     boardState,
+    mobileNative,
+    setActiveCardId,
     toggleListCollapsed,
     togglePlaylistCollapsed,
   ])
@@ -273,12 +309,12 @@ export default function App() {
     (raw: string) => {
       const createdIds = store.capture(raw)
       if (createdIds.length === 0) return
-      // Desktop stays put; mobile snaps to the destination category/playlist.
-      if (isMobileBoardViewport()) {
+      // Desktop stays put; mobile reveals the destination category/playlist.
+      if (mobileNative) {
         setPendingCaptureRevealId(createdIds[0])
       }
     },
-    [store],
+    [store, mobileNative],
   )
 
   useEffect(() => {
@@ -315,6 +351,10 @@ export default function App() {
     const match = findFirstSearchMatch(boardState, q)
     if (!match) return
 
+    if (mobileNative) {
+      setActiveCardId(match.cardId)
+    }
+
     const expand = cardNeedsExpand(boardState, match.cardId)
     if (expand?.kind === 'playlist') {
       togglePlaylistCollapsed(expand.id as PlaylistId)
@@ -338,6 +378,8 @@ export default function App() {
     searchNavKey,
     deferredQuery,
     boardState,
+    mobileNative,
+    setActiveCardId,
     toggleListCollapsed,
     togglePlaylistCollapsed,
   ])
@@ -498,7 +540,8 @@ export default function App() {
   const onNewList = () => {
     const name = window.prompt('New list name')
     if (name === null) return
-    store.createList(name)
+    const id = store.createList(name)
+    if (id && mobileNative) setActiveCardId(id)
   }
 
   const requestDeleteTask = (taskId: string) => {
@@ -534,7 +577,8 @@ export default function App() {
         'os',
         `theme-${store.state.theme}`,
         store.state.wrapTaskTitles ? '' : 'os--nowrap-titles',
-        boardZoomOut ? 'os--zoom-out' : '',
+        !mobileNative && boardZoomOut ? 'os--zoom-out' : '',
+        mobileNative ? 'os--mobile-native' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -554,7 +598,9 @@ export default function App() {
         trashCount={store.state.trash.length}
         textCaptureConnected={textCaptureConnected}
         boardZoomOut={boardZoomOut}
-        onToggleBoardZoom={() => setBoardZoomOut((v) => !v)}
+        onToggleBoardZoom={
+          mobileNative ? undefined : () => setBoardZoomOut((v) => !v)
+        }
       />
 
       <DndContext
@@ -576,6 +622,9 @@ export default function App() {
           insertion={insertion}
           boardZoomOut={boardZoomOut}
           onBoardZoomOutChange={setBoardZoomOut}
+          mobileNative={mobileNative}
+          activeCardId={resolvedActiveCardId}
+          onActiveCardIdChange={setActiveCardId}
           onToggle={store.toggleComplete}
           onDelete={requestDeleteTask}
           onDeleteList={requestDeleteList}
