@@ -1606,16 +1606,23 @@ body.is-resizing * {
     padding: 0;
     overflow: hidden;
     scroll-snap-type: none;
-    touch-action: pan-y;
+    /* Don't lock pan-y here — agenda pager needs horizontal swipe. */
+    touch-action: manipulation;
     overscroll-behavior: none;
   }
 
+  /*
+   * Fixed agenda height so the pager cannot collapse to header-only.
+   * Task rows live inside each page and scroll vertically on overflow.
+   */
   .mobile-agenda {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    max-height: min(46dvh, 22rem);
+    height: max(220px, 40dvh);
+    min-height: 220px;
+    max-height: 50dvh;
+    overflow: hidden;
     border-bottom: 1px solid var(--line);
     background: color-mix(in srgb, var(--panel) 88%, transparent);
   }
@@ -1680,14 +1687,16 @@ body.is-resizing * {
   }
 
   .mobile-agenda__pager {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     display: flex;
+    align-items: stretch;
     min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-    touch-action: pan-x;
+    /* Horizontal page swipe + vertical scroll inside each day page. */
+    touch-action: pan-x pan-y;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -1698,10 +1707,12 @@ body.is-resizing * {
   }
 
   .mobile-agenda__page {
+    box-sizing: border-box;
     flex: 0 0 100%;
     width: 100%;
     min-width: 100%;
     max-width: 100%;
+    height: 100%;
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
@@ -1801,16 +1812,29 @@ body.is-resizing * {
     background: transparent;
     box-shadow: none;
     border-radius: 0;
-    min-height: 100%;
+    /* Natural content height — the page scrolls, not a zero-height flex body. */
+    flex: 0 0 auto;
+    min-height: min-content;
+    height: auto;
+  }
+
+  .board--native .card--agenda-page .card__head,
+  .board--native .card--agenda-page .card__today-meta,
+  .board--native .card--agenda-page .add-row {
+    flex: 0 0 auto;
   }
 
   .board--native .card--agenda-page .card__head {
     padding: 4px 4px 2px;
   }
 
+  .board--native .card--agenda-page .card__toggle {
+    cursor: default;
+  }
+
   .board--native .card--agenda-page .card__body,
   .board--native .card--agenda-page .card__scroll {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
     height: auto !important;
     max-height: none !important;
