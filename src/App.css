@@ -1494,7 +1494,12 @@ body.is-resizing * {
   border: 0;
 }
 
-@media (max-width: 720px) {
+/* Mobile-native list switcher (phones / narrow viewports only). */
+.list-switcher {
+  display: none;
+}
+
+@media (max-width: 768px) {
   .topbar {
     flex-direction: column;
     align-items: stretch;
@@ -1553,110 +1558,137 @@ body.is-resizing * {
     height: 40px;
   }
 
+  /* Zoom is for the old multi-column board — hidden in native single-list mode. */
   .topbar__zoom {
-    display: grid;
-  }
-
-  .board {
-    /* Left padding 0 so the first column can sit flush on a leading-edge snap. */
-    padding: 8px 10px 10px 0;
-    scroll-padding-left: 0;
-    scroll-padding-right: 0;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-
-  .board::-webkit-scrollbar {
     display: none;
   }
 
-  .board-snapback {
+  .board-shell--native {
+    gap: 0;
+  }
+
+  .list-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    padding: 8px 12px 6px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg-elev) 70%, transparent);
+  }
+
+  .list-switcher__nav {
+    flex: 0 0 auto;
     display: grid;
     place-items: center;
-    position: absolute;
-    left: max(10px, env(safe-area-inset-left, 0px));
-    bottom: 10px;
-    z-index: 35;
     width: 40px;
     height: 40px;
     margin: 0;
     padding: 0;
-    border: 1px solid var(--line-strong);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
     color: var(--text);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(12px);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
 
-  .board-snapback:active {
+  .list-switcher__nav:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .list-switcher__nav:not(:disabled):active {
     transform: scale(0.96);
   }
 
-  .board__col-wrap {
-    /* Snap to each column's leading (start) edge — symmetric forward/back. */
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    scroll-margin-left: 0;
-  }
-
-  /* Leave a peek of the next column; swipe snaps to the next full list */
-  .board__col {
-    flex-basis: min(318px, calc(100vw - 42px)) !important;
-    width: min(318px, calc(100vw - 42px)) !important;
-    max-width: calc(100vw - 42px);
-    padding: 3px;
-    gap: 8px;
-  }
-
-  .os--zoom-out .board__col {
-    flex-basis: min(220px, calc(100vw - 96px)) !important;
-    width: min(220px, calc(100vw - 96px)) !important;
-    max-width: calc(100vw - 96px);
-  }
-
-  .os--zoom-out .card__toggle h2 {
-    font-size: 0.8rem;
-  }
-
-  .os--zoom-out .task__text {
-    font-size: 0.72rem;
-  }
-
-  .board__gap {
-    flex-basis: 6px;
-    width: 6px;
-  }
-
-  /* No leading spacer before the first snap target — keeps scrollLeft 0 flush. */
-  .board > .board__gap:first-child {
-    flex-basis: 0;
-    width: 0;
+  .list-switcher__select-wrap {
+    position: relative;
+    flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
   }
 
-  /* Ignore saved desktop card widths on narrow viewports */
-  .board__col .card {
+  .list-switcher__select {
+    width: 100%;
+    min-height: 40px;
+    margin: 0;
+    padding: 8px 32px 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--bg-card);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+
+  .list-switcher__select:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 2px;
+  }
+
+  .list-switcher__chev {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  /* One full-width list — no shrunken multi-column board. */
+  .board--native {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 10px 10px;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    scroll-snap-type: none;
+    touch-action: pan-y;
+  }
+
+  .board--native .card {
+    flex: 1 1 auto;
+    min-height: 0;
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+  }
+
+  .board--native .card__body,
+  .board--native .card__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board--native .card__drag,
+  .board--native .resize-handle,
+  .board--native .width-handle {
+    display: none;
+  }
+
+  .board-snapback {
+    display: none !important;
   }
 
   .width-handle {
     display: none;
-  }
-
-  .resize-handle {
-    height: 16px;
-    margin: 0 8px 4px;
-  }
-
-  .resize-handle::after {
-    top: 6px;
-    height: 3px;
   }
 
   .card__head {
@@ -1664,26 +1696,24 @@ body.is-resizing * {
     padding: 8px 8px 6px 6px;
   }
 
+  .board--native .card__head {
+    padding: 10px 12px 8px;
+  }
+
   .card__toggle h2 {
     font-size: 0.9rem;
   }
 
-  .card__drag {
-    /* Small deliberate grip — scrolling near the header must not grab the column. */
-    width: 18px;
-    height: 22px;
-    border-radius: 5px;
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .card__drag-icon {
-    width: 7px;
-    height: 11px;
+  .board--native .card__toggle h2 {
+    font-size: 1.05rem;
   }
 
   .card__body {
     padding: 3px 5px 2px;
+  }
+
+  .board--native .card__body {
+    padding: 4px 8px 4px;
   }
 
   .card__scroll {

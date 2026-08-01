@@ -516,9 +516,9 @@ export function useLanaStore() {
   }, [])
 
   const createList = useCallback(
-    (name?: string) => {
+    (name?: string): string => {
+      const id = createId()
       commit((prev) => {
-        const id = createId()
         const color = LIST_COLORS[prev.lists.length % LIST_COLORS.length]
         return {
           ...prev,
@@ -543,6 +543,7 @@ export function useLanaStore() {
           listOrders: { ...prev.listOrders, [id]: [] },
         }
       })
+      return id
     },
     [commit],
   )
