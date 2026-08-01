@@ -32,7 +32,9 @@ import {
   cardIdFromOverTarget,
   findPlaylistContaining,
   flattenBoard,
+  flattenListCardIds,
   isPlaylistId,
+  moveListCardInOrder,
   orderedListTasks,
 } from './lib/board'
 import { loadBoardZoomOut, saveBoardZoomOut } from './lib/boardZoom'
@@ -378,9 +380,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [store])
 
-  // Find → navigate: scroll the matching task's column into view and highlight it.
-  // Re-runs when the query changes or when a collapsed card was expanded for the match.
+  // Desktop Find → navigate + highlight. Mobile filters lists in-place instead.
   const searchNavKey = (() => {
+    if (mobileNative) return ''
     const q = deferredQuery.trim()
     if (!q) return ''
     const match = findFirstSearchMatch(boardState, q)
@@ -390,15 +392,12 @@ export default function App() {
   })()
 
   useEffect(() => {
+    if (mobileNative) return
     const q = deferredQuery.trim()
     if (!q) return
 
     const match = findFirstSearchMatch(boardState, q)
     if (!match) return
-
-    if (mobileNative) {
-      setActiveCardId(match.cardId)
-    }
 
     const expand = cardNeedsExpand(boardState, match.cardId)
     if (expand?.kind === 'playlist') {
@@ -424,7 +423,6 @@ export default function App() {
     deferredQuery,
     boardState,
     mobileNative,
-    setActiveCardId,
     toggleListCollapsed,
     togglePlaylistCollapsed,
   ])
@@ -495,6 +493,35 @@ export default function App() {
     const overId = String(over.id)
 
     if (activeData?.type === 'card') {
+      // Mobile: reorder among the flat category-list stack.
+      if (mobileNative) {
+        const overCardId =
+          (overData?.type === 'card' &&
+            (overData.cardId as string | undefined)) ||
+          cardIdFromOverTarget(overId)
+        if (!overCardId || isPlaylistId(overCardId)) {
+          setInsertion(null)
+          return
+        }
+        const lists = flattenListCardIds(store.state.boardColumns)
+        const overIndex = lists.indexOf(overCardId)
+        if (overIndex === -1) {
+          setInsertion(null)
+          return
+        }
+        const rect = over.rect
+        const translated = a.rect.current.translated
+        const pointerY = translated
+          ? translated.top + translated.height / 2
+          : rect.top
+        const before = pointerY < rect.top + rect.height / 2
+        setInsertion({
+          kind: 'list-stack',
+          index: before ? overIndex : overIndex + 1,
+        })
+        return
+      }
+
       if (overData?.type === 'column-gap') {
         setInsertion({ kind: 'column', index: Number(overData.index) })
         return
@@ -575,7 +602,7 @@ export default function App() {
     if (!over || !current) return
 
     if (current.type === 'card') {
-      applyCardDrop(current.cardId, currentInsertion, over, store)
+      applyCardDrop(current.cardId, currentInsertion, over, store, mobileNative)
       return
     }
 
@@ -632,6 +659,7 @@ export default function App() {
         query={query}
         onQueryChange={setQuery}
         searchFocusSignal={searchFocusSignal}
+        hideSearch={mobileNative}
         canUndo={store.canUndo}
         onUndo={store.undo}
         onClearCompleted={store.clearCompleted}
@@ -662,6 +690,8 @@ export default function App() {
         <Board
           state={store.state}
           query={deferredQuery}
+          onQueryChange={setQuery}
+          searchFocusSignal={searchFocusSignal}
           liveClock={liveClock}
           liveDate={liveDate}
           insertion={insertion}
@@ -871,7 +901,31 @@ function applyCardDrop(
   insertion: InsertionState,
   over: { id: string | number; data: { current?: unknown } },
   store: ReturnType<typeof useLanaStore>,
+  mobileNative = false,
 ) {
+  if (mobileNative || insertion?.kind === 'list-stack') {
+    if (isPlaylistId(cardId)) return
+    const lists = flattenListCardIds(store.state.boardColumns)
+    if (insertion?.kind === 'list-stack') {
+      const without = lists.filter((id) => id !== cardId)
+      const at = Math.max(0, Math.min(insertion.index, without.length))
+      without.splice(at, 0, cardId)
+      store.reorderListCards(without)
+      return
+    }
+    const overData = over.data.current as Record<string, unknown> | undefined
+    const overId = String(over.id)
+    const overCardId =
+      (overData?.type === 'card' && (overData.cardId as string | undefined)) ||
+      (overId.startsWith('card:') ? overId.slice(5) : null)
+    if (overCardId && !isPlaylistId(overCardId)) {
+      store.reorderListCards(
+        moveListCardInOrder(lists, cardId, overCardId, true),
+      )
+    }
+    return
+  }
+
   if (insertion?.kind === 'column') {
     store.moveBoardCard(cardId, { newColumnAt: insertion.index })
     return

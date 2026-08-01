@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultBoardColumns,
+  flattenListCardIds,
   insertCardOnBoard,
   isFlatRowBoard,
+  moveListCardInOrder,
   orderedListTasks,
   plannedTaskIds,
+  withReorderedListCards,
 } from './board'
 import { createEmptyState, type Task } from './types'
 
@@ -77,5 +80,25 @@ describe('board layout helpers', () => {
       orderedListTasks(state, 'content-todo', { hidePlanned: true }),
     ).toEqual(['b'])
     expect(orderedListTasks(state, 'content-todo')).toEqual(['a', 'b'])
+  })
+
+  it('reorders flattened list cards while keeping playlists first', () => {
+    const cols = defaultBoardColumns(['errands', 'personal', 'random', 'later'])
+    expect(flattenListCardIds(cols)).toEqual([
+      'errands',
+      'personal',
+      'random',
+      'later',
+    ])
+    const moved = moveListCardInOrder(
+      flattenListCardIds(cols),
+      'later',
+      'errands',
+      true,
+    )
+    expect(moved).toEqual(['later', 'errands', 'personal', 'random'])
+    const next = withReorderedListCards(cols, moved)
+    expect(next[0]).toEqual(['today', 'tomorrow', 'week'])
+    expect(flattenListCardIds(next)).toEqual(moved)
   })
 })

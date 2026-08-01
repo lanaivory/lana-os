@@ -88,6 +88,14 @@ const RULES: Rule[] = [
       /\bhotels?\b/i,
       /\breservations?\b/i,
       /\b(plane|airplane|airline|airbnb|hostel|itinerary|travel)\b/i,
+      // Shopping / errand phrasing that previously fell through to Random.
+      /\bshop(?:ping)?\b/i,
+      /\bgrab\b/i,
+      /\bget\s+(?:some\s+)?(?:milk|stamps?|groceries|coffee|gas|mail)\b/i,
+      /\bstamps?\b/i,
+      /\bdry\s*clean(?:ing)?\b/i,
+      /\bpharmacy\b/i,
+      /\bpost\s*office\b/i,
     ],
   },
   {

@@ -10,6 +10,11 @@ export type InsertionState =
       index: number
     }
   | {
+      /** Mobile vertical list stack — flat reorder index among category lists. */
+      kind: 'list-stack'
+      index: number
+    }
+  | {
       kind: 'column'
       index: number
     }

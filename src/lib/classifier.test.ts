@@ -57,6 +57,10 @@ describe('classifyTask', () => {
     expect(classifyTask('Buy milk and pick up dry cleaning').listId).toBe(
       'errands',
     )
+    expect(classifyTask('buy stamps').listId).toBe('errands')
+    expect(classifyTask('Buy stamps at the post office').listId).toBe('errands')
+    expect(classifyTask('Shopping for party supplies').listId).toBe('errands')
+    expect(classifyTask('Grab stamps on the way home').listId).toBe('errands')
     expect(classifyTask('Order paper towels').listId).toBe('errands')
     expect(classifyTask('Return the package').listId).toBe('errands')
     expect(classifyTask('Book a flight to SF').listId).toBe('errands')

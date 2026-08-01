@@ -69,7 +69,8 @@ export function applyCaptureToState(
       createdAt: now,
       time: null,
       overdue: false,
-      isNew: Boolean(opts.fromText),
+      // Fresh captures always get the short-lived "new" marker (UI expires at 2h).
+      isNew: true,
     }
     tasks[id] = task
     createdIds.push(id)
