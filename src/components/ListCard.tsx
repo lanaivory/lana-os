@@ -11,6 +11,7 @@ import {
   orderedListTasks,
   type BoardCardId,
 } from '../lib/board'
+import { sortTasksForListMode, type ListSortMode } from '../lib/listSort'
 import type { AppState, PlaylistId, Task } from '../lib/types'
 import { AddTaskRow } from './AddTaskRow'
 import { DragHandle } from './DragHandle'
@@ -43,6 +44,12 @@ type ContextProps = SharedProps & {
   onAddTask: (listId: string, text: string) => void
   onDeleteList: (listId: string) => void
   onResizeWidth: (cardId: string, width: number | null) => void
+  /** Mobile: override persisted collapse (empty auto-collapse / force expand). */
+  forceCollapsed?: boolean | null
+  /** Mobile category sort — view-only except `custom` (drag order). */
+  listSortMode?: ListSortMode
+  /** Hide card drag / resize chrome (mobile stack). */
+  chromeLite?: boolean
 }
 
 export function ContextListCard({
@@ -62,27 +69,35 @@ export function ContextListCard({
   onResizeWidth,
   onToggleTaskTitleWrap,
   taskInsertIndex = null,
+  forceCollapsed = null,
+  listSortMode = 'custom',
+  chromeLite = false,
 }: ContextProps) {
   const list = state.lists.find((l) => l.id === listId)
   if (!list) return null
 
   const q = query.trim().toLowerCase()
   const taskIds = orderedListTasks(state, list.id, { hidePlanned: true })
-  const tasks = taskIds
+  const baseTasks = taskIds
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
+  const tasks = sortTasksForListMode(baseTasks, listSortMode)
   const width = state.cardWidths[cardId]
+  const collapsed =
+    forceCollapsed === null ? list.collapsed : forceCollapsed
+  const dragEnabled = listSortMode === 'custom'
 
   return (
     <SortableCardShell
       cardId={cardId}
       insertBefore={insertBefore}
-      height={state.cardHeights[cardId]}
-      width={width}
+      height={chromeLite ? undefined : state.cardHeights[cardId]}
+      width={chromeLite ? undefined : width}
       onResizeHeight={onResizeHeight}
       onResizeWidth={onResizeWidth}
-      enableWidthResize
-      className={list.collapsed ? 'is-collapsed' : ''}
+      enableWidthResize={!chromeLite}
+      hideChrome={chromeLite}
+      className={collapsed ? 'is-collapsed' : ''}
       style={{ '--accent': list.color } as CSSProperties}
       title={
         <>
@@ -90,9 +105,9 @@ export function ContextListCard({
             type="button"
             className="card__toggle"
             onClick={() => onToggleCollapsed(list.id)}
-            aria-expanded={!list.collapsed}
+            aria-expanded={!collapsed}
           >
-            <span className="chev">{list.collapsed ? '▸' : '▾'}</span>
+            <span className="chev">{collapsed ? '▸' : '▾'}</span>
             <span className="card__dot" />
             <h2>{list.name}</h2>
           </button>
@@ -109,11 +124,11 @@ export function ContextListCard({
         </>
       }
     >
-      {!list.collapsed && (
+      {!collapsed && (
         <>
           <TaskDropBody
             containerId={`list:${list.id}`}
-            height={state.cardHeights[cardId]}
+            height={chromeLite ? undefined : state.cardHeights[cardId]}
           >
             {tasks.length === 0 ? (
               <p className="card__empty">No tasks yet</p>
@@ -137,6 +152,7 @@ export function ContextListCard({
                         Boolean(q) && task.text.toLowerCase().includes(q)
                       }
                       titleWrap={effectiveTitleWrap(state, task.id)}
+                      dragDisabled={!dragEnabled}
                       insertBefore={taskInsertIndex === index}
                       onToggle={onToggle}
                       onDelete={onDelete}
@@ -170,6 +186,8 @@ type PlaylistProps = SharedProps & {
   onToggleCollapsed: (playlistId: PlaylistId) => void
   onAddTask: (playlistId: PlaylistId, text: string) => void
   onResizeWidth: (cardId: string, width: number | null) => void
+  /** Mobile agenda pager: always expanded, no card chrome/collapse. */
+  pagerMode?: boolean
 }
 
 export function PlaylistCard({
@@ -194,8 +212,9 @@ export function PlaylistCard({
   onResizeWidth,
   onToggleTaskTitleWrap,
   taskInsertIndex = null,
+  pagerMode = false,
 }: PlaylistProps) {
-  const collapsed = state.collapsedPlaylists[playlistId]
+  const collapsed = pagerMode ? false : state.collapsedPlaylists[playlistId]
   const q = query.trim().toLowerCase()
   const ids = state.playlists[playlistId]
   let tasks = ids
@@ -221,39 +240,51 @@ export function PlaylistCard({
 
   const showTime = playlistId === 'today' || playlistId === 'tomorrow'
   const width = state.cardWidths[cardId]
+  const showFeaturedMeta = featured && !collapsed
 
   return (
     <SortableCardShell
       cardId={cardId}
       insertBefore={insertBefore}
-      height={state.cardHeights[cardId]}
-      width={width}
+      height={pagerMode ? undefined : state.cardHeights[cardId]}
+      width={pagerMode ? undefined : width}
       onResizeHeight={onResizeHeight}
       onResizeWidth={onResizeWidth}
-      enableWidthResize
+      enableWidthResize={!pagerMode}
+      hideChrome={pagerMode}
       className={[
         'card--playlist',
         featured ? 'card--today' : '',
         collapsed ? 'is-collapsed' : '',
+        pagerMode ? 'card--agenda-page' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       title={
-        <>
-          <button
-            type="button"
-            className="card__toggle"
-            onClick={() => onToggleCollapsed(playlistId)}
-            aria-expanded={!collapsed}
-          >
-            <span className="chev">{collapsed ? '▸' : '▾'}</span>
-            <h2>{title}</h2>
-          </button>
-          <span className="card__count">{tasks.length}</span>
-        </>
+        pagerMode ? (
+          <>
+            <div className="card__toggle" aria-hidden={false}>
+              <h2>{title}</h2>
+            </div>
+            <span className="card__count">{tasks.length}</span>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="card__toggle"
+              onClick={() => onToggleCollapsed(playlistId)}
+              aria-expanded={!collapsed}
+            >
+              <span className="chev">{collapsed ? '▸' : '▾'}</span>
+              <h2>{title}</h2>
+            </button>
+            <span className="card__count">{tasks.length}</span>
+          </>
+        )
       }
     >
-      {featured && !collapsed && (
+      {showFeaturedMeta && (
         <div className="card__today-meta">
           <div>
             <p className="card__clock">{liveClock}</p>
@@ -274,7 +305,7 @@ export function PlaylistCard({
         <>
           <TaskDropBody
             containerId={`playlist:${playlistId}`}
-            height={state.cardHeights[cardId]}
+            height={pagerMode ? undefined : state.cardHeights[cardId]}
             playlistId={playlistId}
           >
             {tasks.length === 0 ? (
@@ -335,6 +366,7 @@ function SortableCardShell({
   onResizeHeight,
   onResizeWidth,
   enableWidthResize = false,
+  hideChrome = false,
   insertBefore,
 }: {
   cardId: string
@@ -347,6 +379,7 @@ function SortableCardShell({
   onResizeHeight: (cardId: string, height: number | null) => void
   onResizeWidth?: (cardId: string, width: number | null) => void
   enableWidthResize?: boolean
+  hideChrome?: boolean
   insertBefore?: boolean
 }) {
   const {
@@ -360,12 +393,13 @@ function SortableCardShell({
   } = useSortable({
     id: `card:${cardId}`,
     data: { type: 'card', cardId } satisfies CardDragData,
+    disabled: hideChrome,
   })
 
   const cardStyle: CSSProperties = {
     ...style,
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: hideChrome ? undefined : CSS.Transform.toString(transform),
+    transition: hideChrome ? undefined : transition,
     opacity: isDragging ? 0.4 : 1,
     width: width ?? undefined,
     minWidth: width ?? undefined,
@@ -381,20 +415,24 @@ function SortableCardShell({
         className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
       >
         <header className="card__head">
-          <DragHandle
-            attributes={attributes}
-            listeners={listeners}
-            setActivatorRef={setActivatorNodeRef}
-          />
+          {!hideChrome && (
+            <DragHandle
+              attributes={attributes}
+              listeners={listeners}
+              setActivatorRef={setActivatorNodeRef}
+            />
+          )}
           {title}
         </header>
         {children}
-        <ResizeHandle
-          cardId={cardId}
-          height={height}
-          onResize={onResizeHeight}
-        />
-        {enableWidthResize && onResizeWidth && (
+        {!hideChrome && (
+          <ResizeHandle
+            cardId={cardId}
+            height={height}
+            onResize={onResizeHeight}
+          />
+        )}
+        {!hideChrome && enableWidthResize && onResizeWidth && (
           <>
             <WidthResizeHandle
               cardId={cardId}

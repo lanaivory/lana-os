@@ -32,6 +32,8 @@ type Props = {
   searchMatch?: boolean
   /** Effective wrap for this row (global + per-task override). */
   titleWrap?: boolean
+  /** When true, hide handle listeners (A–Z / recent list sort views). */
+  dragDisabled?: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onTimeChange?: (id: string, time: string | null) => void
@@ -56,6 +58,7 @@ export function TaskRow({
   showListTag = true,
   searchMatch = false,
   titleWrap = true,
+  dragDisabled = false,
   onToggle,
   onDelete,
   onTimeChange,
@@ -74,6 +77,7 @@ export function TaskRow({
   const sortable = useSortable({
     id: sortableId,
     data: dragData,
+    disabled: dragDisabled,
   })
 
   const style: CSSProperties = {
@@ -132,6 +136,7 @@ export function TaskRow({
           task.isNew ? 'is-new' : '',
           searchMatch ? 'is-search-match' : '',
           sortable.isDragging ? 'is-dragging' : '',
+          dragDisabled ? 'is-drag-disabled' : '',
           titleWrap ? 'is-title-wrap' : 'is-title-nowrap',
         ]
           .filter(Boolean)
@@ -194,90 +199,97 @@ export function TaskRow({
             />
           )}
 
-          <div
-            className="task__main"
-            onDoubleClick={(e) => {
-              if (!onToggleTitleWrap) return
-              e.preventDefault()
-              e.stopPropagation()
-              handleTitleDoubleActivate()
-            }}
-            onPointerUp={onTitlePointerUp}
-            title={
-              onToggleTitleWrap
-                ? titleWrap
-                  ? 'Double-tap for single-line title'
-                  : 'Double-tap to wrap title'
-                : undefined
-            }
-          >
-            <p className="task__text">
-              {displayText ? (
-                <HighlightedText text={displayText} query={query} />
-              ) : null}
-              {task.isNew && <span className="badge badge--new">NEW</span>}
-              {task.overdue && !task.completed && (
-                <span className="badge badge--overdue">OVERDUE</span>
+          {/* Cluster lets mobile stack tag+delete under a full-width title. */}
+          <div className="task__cluster">
+            <div className="task__title-line">
+              <div
+                className="task__main"
+                onDoubleClick={(e) => {
+                  if (!onToggleTitleWrap) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleTitleDoubleActivate()
+                }}
+                onPointerUp={onTitlePointerUp}
+                title={
+                  onToggleTitleWrap
+                    ? titleWrap
+                      ? 'Double-tap for single-line title'
+                      : 'Double-tap to wrap title'
+                    : undefined
+                }
+              >
+                <p className="task__text">
+                  {displayText ? (
+                    <HighlightedText text={displayText} query={query} />
+                  ) : null}
+                  {task.isNew && <span className="badge badge--new">NEW</span>}
+                  {task.overdue && !task.completed && (
+                    <span className="badge badge--overdue">OVERDUE</span>
+                  )}
+                </p>
+              </div>
+
+              {url && (
+                <a
+                  className="task__link"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open link"
+                  aria-label="Open link"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
+                    <path
+                      d="M7.2 11.4a3.4 3.4 0 0 1 0-4.8l1.8-1.8a3.4 3.4 0 1 1 4.8 4.8l-1 1"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.85"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12.8 8.6a3.4 3.4 0 0 1 0 4.8l-1.8 1.8a3.4 3.4 0 1 1-4.8-4.8l1-1"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.85"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </a>
               )}
-            </p>
-          </div>
+            </div>
 
-          {url && (
-            <a
-              className="task__link"
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              title="Open link"
-              aria-label="Open link"
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
-                <path
-                  d="M7.2 11.4a3.4 3.4 0 0 1 0-4.8l1.8-1.8a3.4 3.4 0 1 1 4.8 4.8l-1 1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.85"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+            <div className="task__meta">
+              {showListTag && (
+                <ListTag
+                  lists={lists}
+                  listId={task.listId}
+                  onChange={(listId) => onListChange(task.id, listId)}
+                  onOpen={() => onClearNew(task.id)}
                 />
-                <path
-                  d="M12.8 8.6a3.4 3.4 0 0 1 0 4.8l-1.8 1.8a3.4 3.4 0 1 1-4.8-4.8l1-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.85"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </a>
-          )}
+              )}
 
-          {showListTag && (
-            <ListTag
-              lists={lists}
-              listId={task.listId}
-              onChange={(listId) => onListChange(task.id, listId)}
-              onOpen={() => onClearNew(task.id)}
-            />
-          )}
-
-          <div
-            className="task__actions"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="ghost danger"
-              title="Delete"
-              aria-label="Delete task"
-              onClick={() => onDelete(task.id)}
-            >
-              ✕
-            </button>
+              <div
+                className="task__actions"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="ghost danger"
+                  title="Delete"
+                  aria-label="Delete task"
+                  onClick={() => onDelete(task.id)}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </article>
