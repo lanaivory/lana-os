@@ -48,7 +48,10 @@ type ContextProps = SharedProps & {
   forceCollapsed?: boolean | null
   /** Mobile category sort — view-only except `custom` (drag order). */
   listSortMode?: ListSortMode
-  /** Hide card drag / resize chrome (mobile stack). */
+  /**
+   * Mobile stack: hide resize chrome, enable long-press header drag to
+   * reorder whole lists.
+   */
   chromeLite?: boolean
 }
 
@@ -81,11 +84,16 @@ export function ContextListCard({
   const baseTasks = taskIds
     .map((id) => state.tasks[id])
     .filter((t): t is Task => Boolean(t))
-  const tasks = sortTasksForListMode(baseTasks, listSortMode)
+  const sorted = sortTasksForListMode(baseTasks, listSortMode)
+  // Live filter when searching from the Lists toolbar.
+  const tasks = q
+    ? sorted.filter((t) => t.text.toLowerCase().includes(q))
+    : sorted
   const width = state.cardWidths[cardId]
   const collapsed =
     forceCollapsed === null ? list.collapsed : forceCollapsed
   const dragEnabled = listSortMode === 'custom'
+  const visibleCount = q ? tasks.length : sorted.length
 
   return (
     <SortableCardShell
@@ -96,7 +104,8 @@ export function ContextListCard({
       onResizeHeight={onResizeHeight}
       onResizeWidth={onResizeWidth}
       enableWidthResize={!chromeLite}
-      hideChrome={chromeLite}
+      hideResizeChrome={chromeLite}
+      headerLongPressDrag={chromeLite}
       className={collapsed ? 'is-collapsed' : ''}
       style={{ '--accent': list.color } as CSSProperties}
       title={
@@ -111,7 +120,7 @@ export function ContextListCard({
             <span className="card__dot" />
             <h2>{list.name}</h2>
           </button>
-          <span className="card__count">{tasks.length}</span>
+          <span className="card__count">{visibleCount}</span>
           <button
             type="button"
             className="ghost danger card__delete-list"
@@ -131,7 +140,9 @@ export function ContextListCard({
             height={chromeLite ? undefined : state.cardHeights[cardId]}
           >
             {tasks.length === 0 ? (
-              <p className="card__empty">No tasks yet</p>
+              <p className="card__empty">
+                {q ? 'No matching tasks' : 'No tasks yet'}
+              </p>
             ) : (
               <SortableContext
                 items={tasks.map((t) => `task:list:${list.id}:${t.id}`)}
@@ -147,7 +158,7 @@ export function ContextListCard({
                       containerId={list.id}
                       from="list"
                       sortableId={`task:list:${list.id}:${task.id}`}
-                      showListTag
+                      showListTag={task.listId !== list.id}
                       searchMatch={
                         Boolean(q) && task.text.toLowerCase().includes(q)
                       }
@@ -168,7 +179,7 @@ export function ContextListCard({
               </SortableContext>
             )}
           </TaskDropBody>
-          <AddTaskRow onAdd={(text) => onAddTask(list.id, text)} />
+          {!q && <AddTaskRow onAdd={(text) => onAddTask(list.id, text)} />}
         </>
       )}
     </SortableCardShell>
@@ -240,7 +251,9 @@ export function PlaylistCard({
 
   const showTime = playlistId === 'today' || playlistId === 'tomorrow'
   const width = state.cardWidths[cardId]
-  const showFeaturedMeta = featured && !collapsed
+  // Pager: day label + count only (no phone-clock duplicate). Desktop Today keeps meta.
+  const showFeaturedMeta = featured && !collapsed && !pagerMode
+  const showPagerSort = pagerMode && featured && !collapsed && playlistId === 'today'
 
   return (
     <SortableCardShell
@@ -251,7 +264,9 @@ export function PlaylistCard({
       onResizeHeight={onResizeHeight}
       onResizeWidth={onResizeWidth}
       enableWidthResize={!pagerMode}
-      hideChrome={pagerMode}
+      hideResizeChrome={pagerMode}
+      headerLongPressDrag={false}
+      sortableDisabled={pagerMode}
       className={[
         'card--playlist',
         featured ? 'card--today' : '',
@@ -287,9 +302,22 @@ export function PlaylistCard({
       {showFeaturedMeta && (
         <div className="card__today-meta">
           <div>
-            <p className="card__clock">{liveClock}</p>
+            {liveClock ? <p className="card__clock">{liveClock}</p> : null}
             <p className="card__date">{liveDate}</p>
           </div>
+          <label className="sort-toggle">
+            <input
+              type="checkbox"
+              checked={sortByTime}
+              onChange={(e) => onSortByTimeChange?.(e.target.checked)}
+            />
+            <span>Sort by time</span>
+          </label>
+        </div>
+      )}
+
+      {showPagerSort && (
+        <div className="card__today-meta card__today-meta--pager">
           <label className="sort-toggle">
             <input
               type="checkbox"
@@ -366,7 +394,9 @@ function SortableCardShell({
   onResizeHeight,
   onResizeWidth,
   enableWidthResize = false,
-  hideChrome = false,
+  hideResizeChrome = false,
+  headerLongPressDrag = false,
+  sortableDisabled = false,
   insertBefore,
 }: {
   cardId: string
@@ -379,7 +409,10 @@ function SortableCardShell({
   onResizeHeight: (cardId: string, height: number | null) => void
   onResizeWidth?: (cardId: string, width: number | null) => void
   enableWidthResize?: boolean
-  hideChrome?: boolean
+  hideResizeChrome?: boolean
+  /** Long-press the header to drag-reorder the whole list (mobile). */
+  headerLongPressDrag?: boolean
+  sortableDisabled?: boolean
   insertBefore?: boolean
 }) {
   const {
@@ -393,17 +426,21 @@ function SortableCardShell({
   } = useSortable({
     id: `card:${cardId}`,
     data: { type: 'card', cardId } satisfies CardDragData,
-    disabled: hideChrome,
+    disabled: sortableDisabled,
   })
 
   const cardStyle: CSSProperties = {
     ...style,
-    transform: hideChrome ? undefined : CSS.Transform.toString(transform),
-    transition: hideChrome ? undefined : transition,
+    transform: sortableDisabled
+      ? undefined
+      : CSS.Transform.toString(transform),
+    transition: sortableDisabled ? undefined : transition,
     opacity: isDragging ? 0.4 : 1,
     width: width ?? undefined,
     minWidth: width ?? undefined,
   }
+
+  const showDesktopHandle = !hideResizeChrome && !headerLongPressDrag
 
   return (
     <>
@@ -414,8 +451,18 @@ function SortableCardShell({
         data-card-id={cardId}
         className={`card ${className} ${isDragging ? 'is-dragging-card' : ''}`}
       >
-        <header className="card__head">
-          {!hideChrome && (
+        <header
+          className={`card__head${headerLongPressDrag ? ' card__head--longpress' : ''}`}
+          ref={headerLongPressDrag ? setActivatorNodeRef : undefined}
+          {...(headerLongPressDrag ? listeners : {})}
+          title={
+            headerLongPressDrag ? 'Press and hold to reorder list' : undefined
+          }
+          aria-roledescription={
+            headerLongPressDrag ? 'sortable list' : undefined
+          }
+        >
+          {showDesktopHandle && (
             <DragHandle
               attributes={attributes}
               listeners={listeners}
@@ -425,14 +472,14 @@ function SortableCardShell({
           {title}
         </header>
         {children}
-        {!hideChrome && (
+        {!hideResizeChrome && (
           <ResizeHandle
             cardId={cardId}
             height={height}
             onResize={onResizeHeight}
           />
         )}
-        {!hideChrome && enableWidthResize && onResizeWidth && (
+        {!hideResizeChrome && enableWidthResize && onResizeWidth && (
           <>
             <WidthResizeHandle
               cardId={cardId}

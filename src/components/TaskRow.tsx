@@ -6,6 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { taskShowsNew } from '../lib/taskNew'
 import type { ContextList, Task } from '../lib/types'
 import { displayTextWithoutUrl, extractUrl } from '../lib/urls'
 import { HighlightedText } from './HighlightedText'
@@ -89,6 +90,7 @@ export function TaskRow({
 
   const url = extractUrl(task.text)
   const displayText = url ? displayTextWithoutUrl(task.text) : task.text
+  const showNew = taskShowsNew(task)
 
   // Desktop: keep whole-row mouse drag. Touch listeners stay on the handle only
   // so swipes scroll the board instead of grabbing the task.
@@ -133,7 +135,7 @@ export function TaskRow({
           compact ? 'task--compact' : '',
           task.completed ? 'is-done' : '',
           task.overdue && !task.completed ? 'is-overdue' : '',
-          task.isNew ? 'is-new' : '',
+          showNew ? 'is-new' : '',
           searchMatch ? 'is-search-match' : '',
           sortable.isDragging ? 'is-dragging' : '',
           dragDisabled ? 'is-drag-disabled' : '',
@@ -199,9 +201,16 @@ export function TaskRow({
             />
           )}
 
-          {/* Cluster lets mobile stack tag+delete under a full-width title. */}
+          {/* Title wins the row; tag can wrap under. Delete stays inline with title. */}
           <div className="task__cluster">
             <div className="task__title-line">
+              {showNew && (
+                <span
+                  className="task__new-dot"
+                  title="New"
+                  aria-label="New task"
+                />
+              )}
               <div
                 className="task__main"
                 onDoubleClick={(e) => {
@@ -223,7 +232,6 @@ export function TaskRow({
                   {displayText ? (
                     <HighlightedText text={displayText} query={query} />
                   ) : null}
-                  {task.isNew && <span className="badge badge--new">NEW</span>}
                   {task.overdue && !task.completed && (
                     <span className="badge badge--overdue">OVERDUE</span>
                   )}
@@ -262,17 +270,6 @@ export function TaskRow({
                   </svg>
                 </a>
               )}
-            </div>
-
-            <div className="task__meta">
-              {showListTag && (
-                <ListTag
-                  lists={lists}
-                  listId={task.listId}
-                  onChange={(listId) => onListChange(task.id, listId)}
-                  onOpen={() => onClearNew(task.id)}
-                />
-              )}
 
               <div
                 className="task__actions"
@@ -290,6 +287,17 @@ export function TaskRow({
                 </button>
               </div>
             </div>
+
+            {showListTag && (
+              <div className="task__meta">
+                <ListTag
+                  lists={lists}
+                  listId={task.listId}
+                  onChange={(listId) => onListChange(task.id, listId)}
+                  onOpen={() => onClearNew(task.id)}
+                />
+              </div>
+            )}
           </div>
         </div>
       </article>

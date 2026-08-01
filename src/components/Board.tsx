@@ -30,6 +30,8 @@ import { MobileAgenda } from './MobileAgenda'
 type Props = {
   state: AppState
   query: string
+  onQueryChange?: (value: string) => void
+  searchFocusSignal?: number
   liveClock: string
   liveDate: string
   insertion: InsertionState
@@ -59,6 +61,8 @@ type Props = {
 export function Board({
   state,
   query,
+  onQueryChange,
+  searchFocusSignal = 0,
   liveClock,
   liveDate,
   insertion,
@@ -119,6 +123,8 @@ export function Board({
       <MobileNativeBoard
         state={state}
         query={query}
+        onQueryChange={onQueryChange}
+        searchFocusSignal={searchFocusSignal}
         liveClock={liveClock}
         liveDate={liveDate}
         insertion={insertion}
@@ -264,6 +270,9 @@ type SharedCardProps = {
 
 function MobileNativeBoard({
   state,
+  query,
+  onQueryChange,
+  searchFocusSignal = 0,
   liveClock,
   liveDate,
   insertion,
@@ -280,6 +289,8 @@ function MobileNativeBoard({
 }: {
   state: AppState
   query: string
+  onQueryChange?: (value: string) => void
+  searchFocusSignal?: number
   liveClock: string
   liveDate: string
   insertion: InsertionState
@@ -295,12 +306,19 @@ function MobileNativeBoard({
   onSortByTimeChange: (value: boolean) => void
   onDeleteList: (listId: string) => void
 }) {
+  const searchRef = useRef<HTMLInputElement>(null)
   const [agendaPlaylistId, setAgendaPlaylistId] = useState<PlaylistId>(() =>
     resolvedActiveId && isPlaylistId(resolvedActiveId)
       ? resolvedActiveId
       : 'today',
   )
   const [listSortMode, setListSortMode] = useState<ListSortMode>(loadListSortMode)
+
+  useEffect(() => {
+    if (!searchFocusSignal) return
+    searchRef.current?.focus()
+    searchRef.current?.select()
+  }, [searchFocusSignal])
   /** Empty lists start collapsed; user can expand. Non-empty start expanded. */
   const [expandedEmptyIds, setExpandedEmptyIds] = useState<Set<string>>(
     () => new Set(),
@@ -398,7 +416,7 @@ function MobileNativeBoard({
     [listTaskCounts],
   )
 
-  // Capture / search / deep-link → agenda page or expand+scroll category list.
+  // Capture / deep-link → agenda page or expand+scroll category list.
   useEffect(() => {
     if (!resolvedActiveId) return
     if (isPlaylistId(resolvedActiveId)) {
@@ -411,6 +429,19 @@ function MobileNativeBoard({
     }, 40)
     return () => window.clearTimeout(timer)
   }, [resolvedActiveId, ensureListExpanded])
+
+  // While filtering, expand lists that still have matches.
+  useEffect(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return
+    for (const listId of listCardIds) {
+      const ids = orderedListTasks(state, listId, { hidePlanned: true })
+      const hasMatch = ids.some((id) =>
+        state.tasks[id]?.text.toLowerCase().includes(q),
+      )
+      if (hasMatch) ensureListExpanded(listId)
+    }
+  }, [query, listCardIds, state, ensureListExpanded])
 
   const onAgendaChange = useCallback(
     (id: PlaylistId) => {
@@ -472,6 +503,34 @@ function MobileNativeBoard({
         <section className="mobile-lists" aria-label="Lists">
           <div className="mobile-lists__toolbar">
             <h2 className="mobile-lists__title">Lists</h2>
+            <label className="mobile-lists__find">
+              <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden>
+                <circle
+                  cx="8.5"
+                  cy="8.5"
+                  r="5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+                <path
+                  d="M13 13l4 4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                id="lana-lists-search"
+                ref={searchRef}
+                type="search"
+                placeholder="Filter lists"
+                value={query}
+                onChange={(e) => onQueryChange?.(e.target.value)}
+                aria-label="Filter tasks in lists"
+              />
+            </label>
             <label className="mobile-lists__sort">
               <span className="mobile-lists__sort-label">Sort</span>
               <select
@@ -502,12 +561,16 @@ function MobileNativeBoard({
                     insertion.containerId === `list:${cardId}`)
                     ? insertion.index
                     : null
+                const cardInsertBefore =
+                  insertion?.kind === 'list-stack' &&
+                  listCardIds[insertion.index] === cardId
                 return (
                   <ContextListCard
                     key={cardId}
                     cardId={cardId}
                     listId={cardId}
                     {...sharedCardProps}
+                    insertBefore={cardInsertBefore}
                     taskInsertIndex={taskInsertIndex}
                     onDeleteList={onDeleteList}
                     onToggleCollapsed={toggleMobileList}
@@ -518,6 +581,10 @@ function MobileNativeBoard({
                   />
                 )
               })}
+              {insertion?.kind === 'list-stack' &&
+                insertion.index >= listCardIds.length && (
+                  <div className="insert-line insert-line--horizontal" />
+                )}
             </SortableContext>
           </div>
         </section>

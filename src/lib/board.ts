@@ -51,6 +51,50 @@ export function flattenBoard(columns: string[][]): string[] {
   return columns.flat()
 }
 
+/** Category list card ids in current board order (playlists omitted). */
+export function flattenListCardIds(columns: string[][]): string[] {
+  return flattenBoard(columns).filter((id) => !isPlaylistId(id))
+}
+
+/**
+ * Rebuild board columns after a mobile list-stack reorder.
+ * Preserves playlist column order; packs lists into ~3-card columns.
+ */
+export function withReorderedListCards(
+  columns: string[][],
+  orderedListIds: string[],
+): string[][] {
+  const existingPlaylists =
+    columns.find((col) => col.some(isPlaylistId))?.filter(isPlaylistId) ?? []
+  const orderedPlaylists = [
+    ...existingPlaylists,
+    ...PLAYLIST_CARD_IDS.filter((id) => !existingPlaylists.includes(id)),
+  ]
+  const uniqueLists: string[] = []
+  for (const id of orderedListIds) {
+    if (!isPlaylistId(id) && !uniqueLists.includes(id)) uniqueLists.push(id)
+  }
+  return defaultBoardColumns(uniqueLists).map((col, index) =>
+    index === 0 ? orderedPlaylists : col,
+  )
+}
+
+/** Move a list card within the flattened list order. */
+export function moveListCardInOrder(
+  orderedListIds: string[],
+  activeId: string,
+  overId: string,
+  placeBefore: boolean,
+): string[] {
+  if (activeId === overId) return orderedListIds
+  const next = orderedListIds.filter((id) => id !== activeId)
+  let to = next.indexOf(overId)
+  if (to === -1) return orderedListIds
+  if (!placeBefore) to += 1
+  next.splice(to, 0, activeId)
+  return next
+}
+
 export function removeCardFromBoard(
   columns: string[][],
   cardId: string,

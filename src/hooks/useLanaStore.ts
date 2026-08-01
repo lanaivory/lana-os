@@ -4,6 +4,7 @@ import {
   insertCardOnBoard,
   withListOrderAppend,
   withListOrderRemove,
+  withReorderedListCards,
 } from '../lib/board'
 import {
   applyCaptureToState,
@@ -478,6 +479,20 @@ export function useLanaStore() {
     [commit],
   )
 
+  /** Mobile list-stack reorder: rewrite category-list board order. */
+  const reorderListCards = useCallback(
+    (orderedListIds: string[]) => {
+      commit((prev) => ({
+        ...prev,
+        boardColumns: withReorderedListCards(
+          prev.boardColumns,
+          orderedListIds,
+        ),
+      }))
+    },
+    [commit],
+  )
+
   const setCardHeight = useCallback((cardId: string, height: number | null) => {
     setState((prev) => {
       const cardHeights = { ...prev.cardHeights }
@@ -688,6 +703,7 @@ export function useLanaStore() {
     reorderListTasks,
     setBoardColumns,
     moveBoardCard,
+    reorderListCards,
     setCardHeight,
     setCardWidth,
     toggleListCollapsed,

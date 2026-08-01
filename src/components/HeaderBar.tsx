@@ -4,6 +4,8 @@ type Props = {
   query: string
   onQueryChange: (value: string) => void
   searchFocusSignal: number
+  /** Mobile: search lives next to the Lists header instead. */
+  hideSearch?: boolean
   canUndo: boolean
   onUndo: () => void
   onClearCompleted: () => void
@@ -22,6 +24,7 @@ export function HeaderBar({
   query,
   onQueryChange,
   searchFocusSignal,
+  hideSearch = false,
   canUndo,
   onUndo,
   onClearCompleted,
@@ -38,10 +41,10 @@ export function HeaderBar({
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (searchFocusSignal === 0) return
+    if (hideSearch || searchFocusSignal === 0) return
     searchRef.current?.focus()
     searchRef.current?.select()
-  }, [searchFocusSignal])
+  }, [hideSearch, searchFocusSignal])
 
   return (
     <header className="topbar">
@@ -56,34 +59,36 @@ export function HeaderBar({
       </div>
 
       <div className="topbar__actions">
-        <label className="topbar__find">
-          <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden>
-            <circle
-              cx="8.5"
-              cy="8.5"
-              r="5.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
+        {!hideSearch && (
+          <label className="topbar__find">
+            <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden>
+              <circle
+                cx="8.5"
+                cy="8.5"
+                r="5.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <path
+                d="M13 13l4 4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              id="lana-search"
+              ref={searchRef}
+              type="search"
+              placeholder="Find"
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
             />
-            <path
-              d="M13 13l4 4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-          <input
-            id="lana-search"
-            ref={searchRef}
-            type="search"
-            placeholder="Find"
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-          />
-          <kbd>⌘K</kbd>
-        </label>
+            <kbd>⌘K</kbd>
+          </label>
+        )}
 
         <button
           type="button"
