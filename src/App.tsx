@@ -669,6 +669,7 @@ export default function App() {
           onBoardZoomOutChange={setBoardZoomOut}
           mobileNative={mobileNative}
           activeCardId={resolvedActiveCardId}
+          onActiveCardIdChange={setActiveCardId}
           onToggle={store.toggleComplete}
           onDelete={requestDeleteTask}
           onDeleteList={requestDeleteList}

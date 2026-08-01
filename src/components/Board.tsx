@@ -4,18 +4,28 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
+  useState,
   type CSSProperties,
   type ReactNode,
 } from 'react'
 import { useBoardGestures } from '../hooks/useBoardGestures'
-import { flattenBoard } from '../lib/board'
+import { flattenBoard, isPlaylistId, orderedListTasks } from '../lib/board'
 import { scrollCardIntoBoardView } from '../lib/focusTask'
+import {
+  LIST_SORT_LABELS,
+  LIST_SORT_MODES,
+  loadListSortMode,
+  saveListSortMode,
+  type ListSortMode,
+} from '../lib/listSort'
 import type { AppState, PlaylistId } from '../lib/types'
 import type { InsertionState } from './InsertionLine'
 import { ContextListCard, PlaylistCard, renderCardIdIsPlaylist } from './ListCard'
+import { MobileAgenda } from './MobileAgenda'
 
 type Props = {
   state: AppState
@@ -25,10 +35,11 @@ type Props = {
   insertion: InsertionState
   boardZoomOut: boolean
   onBoardZoomOutChange: (zoomOut: boolean) => void
-  /** Phones / narrow viewports: vertical stack of all lists (not the 2D board). */
+  /** Phones / narrow viewports: agenda pager + stacked category lists. */
   mobileNative?: boolean
   /** Scroll-target board card id when `mobileNative` is on (capture / search / deep-link). */
   activeCardId?: string | null
+  onActiveCardIdChange?: (cardId: string) => void
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onDeleteList: (listId: string) => void
@@ -55,6 +66,7 @@ export function Board({
   onBoardZoomOutChange,
   mobileNative = false,
   activeCardId = null,
+  onActiveCardIdChange,
   onToggle,
   onDelete,
   onDeleteList,
@@ -75,39 +87,14 @@ export function Board({
     () => flattenBoard(state.boardColumns),
     [state.boardColumns],
   )
+  const listCardIds = useMemo(
+    () => cardIds.filter((id) => !isPlaylistId(id)),
+    [cardIds],
+  )
   const resolvedActiveId =
     activeCardId && cardIds.includes(activeCardId)
       ? activeCardId
       : (cardIds[0] ?? null)
-
-  // Expand the scroll-target card so capture / search / deep-links aren't blank.
-  useEffect(() => {
-    if (!mobileNative || !resolvedActiveId) return
-    if (renderCardIdIsPlaylist(resolvedActiveId)) {
-      if (state.collapsedPlaylists[resolvedActiveId]) {
-        onTogglePlaylistCollapsed(resolvedActiveId)
-      }
-      return
-    }
-    const list = state.lists.find((l) => l.id === resolvedActiveId)
-    if (list?.collapsed) onToggleListCollapsed(resolvedActiveId)
-  }, [
-    mobileNative,
-    resolvedActiveId,
-    state.collapsedPlaylists,
-    state.lists,
-    onToggleListCollapsed,
-    onTogglePlaylistCollapsed,
-  ])
-
-  // Scroll the stack when the active target changes (not on every list edit).
-  useEffect(() => {
-    if (!mobileNative || !resolvedActiveId) return
-    const timer = window.setTimeout(() => {
-      scrollCardIntoBoardView(resolvedActiveId, { align: 'start' })
-    }, 40)
-    return () => window.clearTimeout(timer)
-  }, [mobileNative, resolvedActiveId])
 
   const { showSnapBack, snapBackToStart } = useBoardGestures(boardRef, {
     boardZoomOut,
@@ -128,65 +115,25 @@ export function Board({
   }
 
   if (mobileNative && cardIds.length > 0) {
-    const sortableCardIds = cardIds.map((id) => `card:${id}`)
     return (
-      <div className="board-shell board-shell--native">
-        <div
-          ref={boardRef}
-          className="board board--native"
-          aria-label="Lana OS lists"
-          data-board
-          data-mobile-native="true"
-        >
-          <SortableContext
-            items={sortableCardIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {cardIds.map((cardId) => {
-              const taskInsertIndex =
-                insertion?.kind === 'task' &&
-                (insertion.containerId === cardId ||
-                  insertion.containerId === `list:${cardId}` ||
-                  insertion.containerId === `playlist:${cardId}`)
-                  ? insertion.index
-                  : null
-
-              if (renderCardIdIsPlaylist(cardId)) {
-                return (
-                  <PlaylistCard
-                    key={cardId}
-                    cardId={cardId}
-                    playlistId={cardId}
-                    {...sharedCardProps}
-                    featured={cardId === 'today'}
-                    liveClock={liveClock}
-                    liveDate={liveDate}
-                    sortByTime={state.sortTodayByTime}
-                    onSortByTimeChange={onSortByTimeChange}
-                    taskInsertIndex={taskInsertIndex}
-                    onTimeChange={onTimeChange}
-                    onToggleCollapsed={onTogglePlaylistCollapsed}
-                    onAddTask={onAddToPlaylist}
-                  />
-                )
-              }
-
-              return (
-                <ContextListCard
-                  key={cardId}
-                  cardId={cardId}
-                  listId={cardId}
-                  {...sharedCardProps}
-                  taskInsertIndex={taskInsertIndex}
-                  onDeleteList={onDeleteList}
-                  onToggleCollapsed={onToggleListCollapsed}
-                  onAddTask={onAddToList}
-                />
-              )
-            })}
-          </SortableContext>
-        </div>
-      </div>
+      <MobileNativeBoard
+        state={state}
+        query={query}
+        liveClock={liveClock}
+        liveDate={liveDate}
+        insertion={insertion}
+        listCardIds={listCardIds}
+        resolvedActiveId={resolvedActiveId}
+        onActiveCardIdChange={onActiveCardIdChange}
+        sharedCardProps={sharedCardProps}
+        onTimeChange={onTimeChange}
+        onToggleListCollapsed={onToggleListCollapsed}
+        onTogglePlaylistCollapsed={onTogglePlaylistCollapsed}
+        onAddToList={onAddToList}
+        onAddToPlaylist={onAddToPlaylist}
+        onSortByTimeChange={onSortByTimeChange}
+        onDeleteList={onDeleteList}
+      />
     )
   }
 
@@ -299,6 +246,282 @@ export function Board({
           </svg>
         </button>
       )}
+    </div>
+  )
+}
+
+type SharedCardProps = {
+  state: AppState
+  query: string
+  onToggle: (id: string) => void
+  onDelete: (id: string) => void
+  onListChange: (id: string, listId: string) => void
+  onClearNew: (id: string) => void
+  onResizeHeight: (cardId: string, height: number | null) => void
+  onResizeWidth: (cardId: string, width: number | null) => void
+  onToggleTaskTitleWrap: (taskId: string) => void
+}
+
+function MobileNativeBoard({
+  state,
+  liveClock,
+  liveDate,
+  insertion,
+  listCardIds,
+  resolvedActiveId,
+  onActiveCardIdChange,
+  sharedCardProps,
+  onTimeChange,
+  onTogglePlaylistCollapsed,
+  onAddToList,
+  onAddToPlaylist,
+  onSortByTimeChange,
+  onDeleteList,
+}: {
+  state: AppState
+  query: string
+  liveClock: string
+  liveDate: string
+  insertion: InsertionState
+  listCardIds: string[]
+  resolvedActiveId: string | null
+  onActiveCardIdChange?: (cardId: string) => void
+  sharedCardProps: SharedCardProps
+  onTimeChange: (id: string, time: string | null) => void
+  onToggleListCollapsed: (listId: string) => void
+  onTogglePlaylistCollapsed: (playlistId: PlaylistId) => void
+  onAddToList: (listId: string, text: string) => void
+  onAddToPlaylist: (playlistId: PlaylistId, text: string) => void
+  onSortByTimeChange: (value: boolean) => void
+  onDeleteList: (listId: string) => void
+}) {
+  const [agendaPlaylistId, setAgendaPlaylistId] = useState<PlaylistId>(() =>
+    resolvedActiveId && isPlaylistId(resolvedActiveId)
+      ? resolvedActiveId
+      : 'today',
+  )
+  const [listSortMode, setListSortMode] = useState<ListSortMode>(loadListSortMode)
+  /** Empty lists start collapsed; user can expand. Non-empty start expanded. */
+  const [expandedEmptyIds, setExpandedEmptyIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [userCollapsedIds, setUserCollapsedIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+
+  const listTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const listId of listCardIds) {
+      counts[listId] = orderedListTasks(state, listId, {
+        hidePlanned: true,
+      }).length
+    }
+    return counts
+  }, [listCardIds, state])
+
+  // Drop empty-list expand flags once a list gains tasks (stays open via default).
+  useEffect(() => {
+    setExpandedEmptyIds((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const id of prev) {
+        if ((listTaskCounts[id] ?? 0) > 0) {
+          next.delete(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+    setUserCollapsedIds((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const id of prev) {
+        if ((listTaskCounts[id] ?? 0) === 0) {
+          next.delete(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [listTaskCounts])
+
+  const isListCollapsed = useCallback(
+    (listId: string): boolean => {
+      const count = listTaskCounts[listId] ?? 0
+      if (count === 0) return !expandedEmptyIds.has(listId)
+      return userCollapsedIds.has(listId)
+    },
+    [listTaskCounts, expandedEmptyIds, userCollapsedIds],
+  )
+
+  const toggleMobileList = useCallback(
+    (listId: string) => {
+      const count = listTaskCounts[listId] ?? 0
+      if (count === 0) {
+        setExpandedEmptyIds((prev) => {
+          const next = new Set(prev)
+          if (next.has(listId)) next.delete(listId)
+          else next.add(listId)
+          return next
+        })
+        return
+      }
+      setUserCollapsedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(listId)) next.delete(listId)
+        else next.add(listId)
+        return next
+      })
+    },
+    [listTaskCounts],
+  )
+
+  const ensureListExpanded = useCallback(
+    (listId: string) => {
+      const count = listTaskCounts[listId] ?? 0
+      if (count === 0) {
+        setExpandedEmptyIds((prev) => {
+          if (prev.has(listId)) return prev
+          const next = new Set(prev)
+          next.add(listId)
+          return next
+        })
+        return
+      }
+      setUserCollapsedIds((prev) => {
+        if (!prev.has(listId)) return prev
+        const next = new Set(prev)
+        next.delete(listId)
+        return next
+      })
+    },
+    [listTaskCounts],
+  )
+
+  // Capture / search / deep-link → agenda page or expand+scroll category list.
+  useEffect(() => {
+    if (!resolvedActiveId) return
+    if (isPlaylistId(resolvedActiveId)) {
+      setAgendaPlaylistId(resolvedActiveId)
+      return
+    }
+    ensureListExpanded(resolvedActiveId)
+    const timer = window.setTimeout(() => {
+      scrollCardIntoBoardView(resolvedActiveId, { align: 'start' })
+    }, 40)
+    return () => window.clearTimeout(timer)
+  }, [resolvedActiveId, ensureListExpanded])
+
+  const onAgendaChange = useCallback(
+    (id: PlaylistId) => {
+      setAgendaPlaylistId(id)
+      onActiveCardIdChange?.(id)
+    },
+    [onActiveCardIdChange],
+  )
+
+  const onSortModeChange = useCallback((mode: ListSortMode) => {
+    setListSortMode(mode)
+    saveListSortMode(mode)
+  }, [])
+
+  const sortableCardIds = useMemo(
+    () => listCardIds.map((id) => `card:${id}`),
+    [listCardIds],
+  )
+
+  return (
+    <div className="board-shell board-shell--native">
+      <div
+        className="board board--native"
+        aria-label="Lana OS mobile"
+        data-board
+        data-mobile-native="true"
+      >
+        <MobileAgenda
+          activePlaylistId={agendaPlaylistId}
+          onActivePlaylistChange={onAgendaChange}
+        >
+          {(playlistId) => {
+            const taskInsertIndex =
+              insertion?.kind === 'task' &&
+              (insertion.containerId === playlistId ||
+                insertion.containerId === `playlist:${playlistId}`)
+                ? insertion.index
+                : null
+            return (
+              <PlaylistCard
+                cardId={playlistId}
+                playlistId={playlistId}
+                {...sharedCardProps}
+                featured={playlistId === 'today'}
+                liveClock={liveClock}
+                liveDate={liveDate}
+                sortByTime={state.sortTodayByTime}
+                onSortByTimeChange={onSortByTimeChange}
+                taskInsertIndex={taskInsertIndex}
+                onTimeChange={onTimeChange}
+                onToggleCollapsed={onTogglePlaylistCollapsed}
+                onAddTask={onAddToPlaylist}
+                pagerMode
+              />
+            )
+          }}
+        </MobileAgenda>
+
+        <section className="mobile-lists" aria-label="Lists">
+          <div className="mobile-lists__toolbar">
+            <h2 className="mobile-lists__title">Lists</h2>
+            <label className="mobile-lists__sort">
+              <span className="mobile-lists__sort-label">Sort</span>
+              <select
+                value={listSortMode}
+                onChange={(e) =>
+                  onSortModeChange(e.target.value as ListSortMode)
+                }
+                aria-label="Sort lists"
+              >
+                {LIST_SORT_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {LIST_SORT_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mobile-lists__scroll" data-lists-scroll>
+            <SortableContext
+              items={sortableCardIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {listCardIds.map((cardId) => {
+                const taskInsertIndex =
+                  insertion?.kind === 'task' &&
+                  (insertion.containerId === cardId ||
+                    insertion.containerId === `list:${cardId}`)
+                    ? insertion.index
+                    : null
+                return (
+                  <ContextListCard
+                    key={cardId}
+                    cardId={cardId}
+                    listId={cardId}
+                    {...sharedCardProps}
+                    taskInsertIndex={taskInsertIndex}
+                    onDeleteList={onDeleteList}
+                    onToggleCollapsed={toggleMobileList}
+                    onAddTask={onAddToList}
+                    forceCollapsed={isListCollapsed(cardId)}
+                    listSortMode={listSortMode}
+                    chromeLite
+                  />
+                )
+              })}
+            </SortableContext>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

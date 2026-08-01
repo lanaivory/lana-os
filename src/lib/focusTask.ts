@@ -1,5 +1,5 @@
-import { findPlaylistContaining } from './board'
-import type { AppState } from './types'
+import { findPlaylistContaining, isPlaylistId } from './board'
+import type { AppState, PlaylistId } from './types'
 
 /** Card id that currently shows the task (playlist wins over context list). */
 export function cardIdForTask(state: AppState, taskId: string): string | null {
@@ -41,7 +41,9 @@ export function clearFocusFromUrl(): void {
  * Native scrollIntoView can pan the document on iOS and hide the capture bar.
  */
 function scrollIntoScrollParent(el: HTMLElement): void {
-  const parent = el.closest<HTMLElement>('.card__scroll, .board')
+  const parent = el.closest<HTMLElement>(
+    '.card__scroll, .mobile-lists__scroll, .mobile-agenda__page, .board',
+  )
   if (!parent) return
   const parentRect = parent.getBoundingClientRect()
   const elRect = el.getBoundingClientRect()
@@ -97,20 +99,62 @@ function scrollBoardToTarget(
   }
 }
 
+/** Snap the mobile agenda pager to a playlist page. */
+export function scrollAgendaPageIntoView(playlistId: PlaylistId): boolean {
+  if (typeof document === 'undefined') return false
+  const pager = document.querySelector<HTMLElement>('[data-agenda-pager]')
+  const page = document.querySelector<HTMLElement>(
+    `[data-agenda-page="${cssEscape(playlistId)}"]`,
+  )
+  if (!pager || !page) return false
+  const width = pager.clientWidth
+  if (width <= 0) return false
+  const index = ['today', 'tomorrow', 'week'].indexOf(playlistId)
+  if (index < 0) return false
+  pager.scrollTo({ left: index * width, behavior: 'auto' })
+  return true
+}
+
 /**
  * Scroll the board so a list/playlist card is visible.
- * Desktop: horizontal columns. Mobile-native: vertical stack.
+ * Desktop: horizontal columns. Mobile-native: agenda pager or lists stack.
  */
 export function scrollCardIntoBoardView(
   cardId: string,
   opts: { align?: 'nearest' | 'start' } = {},
 ): boolean {
   if (typeof document === 'undefined') return false
+
+  if (isPlaylistId(cardId)) {
+    return scrollAgendaPageIntoView(cardId)
+  }
+
   const cardEl = document.querySelector<HTMLElement>(
     `[data-card-id="${cssEscape(cardId)}"]`,
   )
+  if (!cardEl) return false
+
+  const listsScroll = document.querySelector<HTMLElement>('[data-lists-scroll]')
+  if (listsScroll && listsScroll.contains(cardEl)) {
+    const parentRect = listsScroll.getBoundingClientRect()
+    const elRect = cardEl.getBoundingClientRect()
+    const align = opts.align ?? 'nearest'
+    if (align === 'start') {
+      listsScroll.scrollTop += elRect.top - parentRect.top - 8
+    } else {
+      const pad = 8
+      if (elRect.top < parentRect.top + pad) {
+        listsScroll.scrollTop += elRect.top - parentRect.top - pad
+      } else if (elRect.bottom > parentRect.bottom - pad) {
+        listsScroll.scrollTop += elRect.bottom - parentRect.bottom + pad
+      }
+    }
+    lockDocumentScroll()
+    return true
+  }
+
   const boardEl = document.querySelector<HTMLElement>('.board')
-  if (!cardEl || !boardEl) return false
+  if (!boardEl) return false
 
   const align = opts.align ?? 'nearest'
   const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
@@ -135,13 +179,25 @@ export function scrollTaskIntoBoardView(
   if (!taskEl) return false
 
   const cardEl = taskEl.closest<HTMLElement>('.card')
-  const boardEl = document.querySelector<HTMLElement>('.board')
+  const cardId = cardEl?.dataset.cardId
   const align = opts.alignColumn ?? 'nearest'
 
-  if (boardEl && cardEl) {
-    const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
-    const target = align === 'start' && colWrap ? colWrap : cardEl
-    scrollBoardToTarget(boardEl, target, align)
+  if (cardId && isPlaylistId(cardId)) {
+    scrollAgendaPageIntoView(cardId)
+  } else if (cardEl) {
+    const listsScroll = document.querySelector<HTMLElement>('[data-lists-scroll]')
+    if (listsScroll && listsScroll.contains(cardEl)) {
+      scrollCardIntoBoardView(cardEl.dataset.cardId ?? '', {
+        align: align === 'start' ? 'start' : 'nearest',
+      })
+    } else {
+      const boardEl = document.querySelector<HTMLElement>('.board')
+      if (boardEl) {
+        const colWrap = cardEl.closest<HTMLElement>('.board__col-wrap')
+        const target = align === 'start' && colWrap ? colWrap : cardEl
+        scrollBoardToTarget(boardEl, target, align)
+      }
+    }
   }
 
   scrollIntoScrollParent(taskEl)
