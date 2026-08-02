@@ -1,6 +1,9 @@
 /*
  * Mobile shell styles. Self-contained: every rule is scoped to `.mos` and no
  * rule reaches into the desktop board's stylesheet (or vice versa).
+ *
+ * Layout is one fixed column: screen header, scrolling screen body, optional
+ * capture bar, bottom tab bar.
  */
 
 .mos {
@@ -70,75 +73,64 @@
   cursor: pointer;
 }
 
-.mos-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
+/* --------------------------------------------------------- screen header */
 
-/* ---------------------------------------------------------------- header */
-
-.mos-header {
+.mos-topbar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: calc(10px + var(--safe-top)) 14px 10px;
+  gap: 8px;
+  padding: calc(10px + var(--safe-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
   backdrop-filter: blur(14px);
 }
 
-.mos-header__brand {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+.mos-topbar__back {
+  margin-left: -6px;
+  color: var(--accent);
+}
+
+.mos-topbar__text {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.mos-header__title {
+.mos-topbar__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.12rem;
+  font-size: 1.16rem;
   font-weight: 600;
   letter-spacing: -0.03em;
-  background: linear-gradient(120deg, #fff6ea 10%, var(--accent) 70%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mos.theme-light .mos-header__title {
-  background: linear-gradient(120deg, #2a2118 10%, var(--accent) 80%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-.mos-header__clock {
+.mos-topbar__subtitle {
+  margin: 1px 0 0;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mos-header__status {
-  align-self: center;
+.mos-topbar__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mos-status {
   width: 7px;
   height: 7px;
+  margin-right: 4px;
   border-radius: 50%;
   background: var(--accent-2);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-2) 18%, transparent);
-}
-
-.mos-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .mos-icon-btn {
@@ -161,7 +153,7 @@
   opacity: 0.35;
 }
 
-/* ---------------------------------------------------------------- scroll */
+/* ----------------------------------------------------------- screen body */
 
 .mos-scroll {
   flex: 1 1 auto;
@@ -170,65 +162,16 @@
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 10px 12px 18px;
+  padding: 12px 12px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-/* ---------------------------------------------------------------- agenda */
-
-.mos-agenda {
+.mos-day {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.mos-agenda__tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  padding: 3px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-}
-
-.mos-agenda__tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.mos-agenda__tab.is-active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-}
-
-.mos-agenda__count {
-  min-width: 18px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-2) 22%, transparent);
-  color: var(--accent-2);
-  font-size: 0.68rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.mos-agenda__page {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   /* Vertical scrolling stays native; swipes are only measured, never blocked. */
   touch-action: pan-y;
   animation: mos-fade 160ms ease-out;
@@ -242,27 +185,104 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mos-agenda__page {
+  .mos-day {
     animation: none;
   }
 }
 
-.mos-agenda__caption {
+.mos-day__caption {
   margin: 0 2px;
   color: var(--faint);
   font-size: 0.76rem;
   letter-spacing: 0.01em;
 }
 
-.mos-agenda__empty,
-.mos-list__empty {
+.mos-empty {
   margin: 0;
-  padding: 14px 12px;
+  padding: 16px 12px;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
   color: var(--faint);
   font-size: 0.84rem;
   text-align: center;
+}
+
+.mos-note {
+  margin: 0;
+  color: var(--faint);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.mos-bullets {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--faint);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.mos-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: stretch;
+  min-height: 42px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.mos-ghost-btn:active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------- day tabs */
+
+.mos-daytabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.mos-daytabs__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mos-daytabs__tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.mos-daytabs__count {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-2) 22%, transparent);
+  color: var(--accent-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ----------------------------------------------------------------- tasks */
@@ -375,6 +395,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.mos-task__day {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 34%, var(--line));
+  color: var(--accent-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
 .mos-task__tag {
   max-width: 60vw;
   overflow: hidden;
@@ -399,27 +428,12 @@
   color: var(--muted);
 }
 
-/* ----------------------------------------------------------------- lists */
+/* ------------------------------------------------------------ lists tab */
 
-.mos-lists {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.mos-lists__toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
+.mos-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* Negative margin cancels the scroller's padding so the bar spans edge to
-     edge once it sticks, instead of letting rows slide past beside it. */
-  margin: 0 -12px;
-  padding: 8px 12px;
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(10px);
 }
 
 .mos-field {
@@ -448,37 +462,76 @@
   outline: none;
 }
 
-.mos-lists__stack {
+.mos-index {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
-.mos-list {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  overflow: hidden;
-}
-
-.mos-list__head {
+.mos-index__item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px 4px 4px;
+  gap: 2px;
+  padding-right: 4px;
+  border: 1px solid var(--line);
+  border-left: 3px solid color-mix(in srgb, var(--tag, var(--muted)) 65%, transparent);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.mos-list__toggle {
+.mos-index__open {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: var(--tap);
-  padding: 0 6px;
+  gap: 10px;
+  min-height: 54px;
+  padding: 8px 10px;
   border: 0;
   background: transparent;
   text-align: left;
+}
+
+.mos-index__open:disabled {
+  opacity: 0.7;
+}
+
+.mos-index__dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--tag, var(--muted));
+}
+
+.mos-index__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mos-index__name {
+  font-size: 0.94rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mos-index__meta {
+  color: var(--faint);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mos-index__reorder {
+  display: flex;
+  gap: 2px;
 }
 
 .mos-chevron {
@@ -491,57 +544,194 @@
   transform: rotate(90deg);
 }
 
-.mos-list__dot {
-  flex: 0 0 auto;
+.mos-detail__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mos-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------- calendar tab */
+
+.mos-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.mos-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.mos-slot {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+}
+
+.mos-slot:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.mos-slot__hour {
+  flex: 0 0 46px;
+  padding-top: 6px;
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mos-slot__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 34px;
+}
+
+.mos-slot__now {
+  position: absolute;
+  left: -6px;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.mos-slot__now::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -3px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--tag, var(--muted));
+  background: var(--accent);
 }
 
-.mos-list__name {
+.mos-slot__add {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
+}
+
+.mos-slot__add:active {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.mos-slot.is-empty:hover .mos-slot__add {
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------- groups and rows */
+
+.mos-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mos-group__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.mos-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.mos-row:disabled {
+  opacity: 0.45;
+}
+
+.mos-row--danger {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--line));
+  color: var(--danger);
+}
+
+.mos-row.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.mos-row__text {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.mos-list__count {
-  flex: 0 0 auto;
-  color: var(--faint);
-  font-size: 0.76rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.mos-list__reorder {
   display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 
-.mos-list__body {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 0 8px 9px;
+.mos-row__label {
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
-/* -------------------------------------------------------------- composer */
+.mos-row.is-selected .mos-row__label::after {
+  content: ' ✓';
+  color: var(--accent);
+}
+
+.mos-row__hint {
+  color: var(--faint);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.mos-row__trailing {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------- composer */
 
 .mos-composer__open {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   align-self: flex-start;
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 0 12px;
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   background: transparent;
   color: var(--faint);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 
 .mos-composer {
@@ -552,7 +742,7 @@
 .mos-composer__input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 38px;
+  height: 40px;
   padding: 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
@@ -581,14 +771,10 @@
   flex: 0 0 auto;
   display: flex;
   gap: 8px;
-  padding: 9px 12px calc(9px + var(--safe-bottom));
+  padding: 9px 12px;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 94%, transparent);
   backdrop-filter: blur(14px);
-}
-
-.mos.is-keyboard-open .mos-capture {
-  padding-bottom: 9px;
 }
 
 .mos-capture__input {
@@ -618,6 +804,73 @@
 
 .mos-capture__submit:disabled {
   opacity: 0.4;
+}
+
+/* --------------------------------------------------------------- tab bar */
+
+.mos-tabbar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 6px 6px calc(6px + var(--safe-bottom));
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+/* With the keyboard up the bar would sit on the keys; capture wins the space. */
+.mos.is-keyboard-open .mos-tabbar {
+  display: none;
+}
+
+.mos-tabbar__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 50px;
+  padding: 5px 0 3px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--faint);
+}
+
+.mos-tabbar__tab.is-active {
+  color: var(--accent);
+}
+
+.mos-tabbar__tab:active {
+  background: var(--surface-2);
+}
+
+.mos-tabbar__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+
+.mos-tabbar__badge {
+  position: absolute;
+  top: -5px;
+  left: 12px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: #08120e;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.mos-tabbar__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 /* ---------------------------------------------------------------- sheets */
@@ -715,68 +968,11 @@
   gap: 16px;
 }
 
-.mos-sheet__group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mos-sheet__group-title {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-.mos-sheet__action {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: var(--tap);
-  padding: 9px 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  text-align: left;
-}
-
-.mos-sheet__action:disabled {
-  opacity: 0.45;
-}
-
-.mos-sheet__action--danger {
-  border-color: color-mix(in srgb, var(--danger) 34%, var(--line));
-  color: var(--danger);
-}
-
-.mos-sheet__action-label {
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-.mos-sheet__action-hint,
-.mos-sheet__note {
-  margin: 0;
-  color: var(--faint);
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
 .mos-sheet__message {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.45;
   color: var(--muted);
-}
-
-.mos-sheet__list {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--faint);
-  font-size: 0.8rem;
-  line-height: 1.6;
 }
 
 .mos-sheet__title-form {
@@ -931,6 +1127,10 @@
   align-items: center;
   gap: 10px;
   min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   font-size: 0.9rem;
 }
 
@@ -938,6 +1138,43 @@
   width: 20px;
   height: 20px;
   accent-color: var(--accent-2);
+}
+
+/* --------------------------------------------------------- picker sheets */
+
+.mos-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mos-pick__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid color-mix(in srgb, var(--tag, var(--muted)) 60%, transparent);
+  border-radius: 11px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.mos-pick__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.mos-pick__item svg {
+  flex: 0 0 auto;
+  color: var(--accent);
 }
 
 /* ----------------------------------------------------------------- trash */

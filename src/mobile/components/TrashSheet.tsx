@@ -38,7 +38,7 @@ export function TrashSheet({
   return (
     <>
       <Sheet open={open} title="Recently deleted" onClose={onClose}>
-        <p className="mos-sheet__note">
+        <p className="mos-note">
           Items stay here for 24 hours, then go for good.
         </p>
 
