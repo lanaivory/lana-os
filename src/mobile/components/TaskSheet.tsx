@@ -30,7 +30,8 @@ const WHEN_LABELS: Record<PlaylistId, string> = {
 /**
  * Capture and edit in one lean sheet: what it is, where it lives, when it
  * happens. Every control writes straight through, so closing is saving and
- * there is no Save button to hunt for.
+ * there is no Save button to hunt for. The title is not focused on open — the
+ * text is usually already right, and a keyboard would cover the rest.
  */
 export function TaskSheet({
   task,
@@ -47,18 +48,10 @@ export function TaskSheet({
   const [title, setTitle] = useState(task?.text ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const taskId = task?.id ?? null
 
   useEffect(() => {
     setTitle(task?.text ?? '')
   }, [task?.id, task?.text])
-
-  // The title is the point of the sheet, so it opens focused and ready.
-  useEffect(() => {
-    if (!taskId) return
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 60)
-    return () => window.clearTimeout(timer)
-  }, [taskId])
 
   const suggestions = useMemo(() => {
     if (!task) return []

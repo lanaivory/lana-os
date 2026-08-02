@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { REMINDER_PRESETS, formatReminder } from '../../lib/commitments'
 import { suggestLists } from '../../lib/listSuggest'
 import type { Commitment, ContextList } from '../../lib/types'
@@ -47,20 +47,27 @@ export function CommitmentSheet({
   const [customOpen, setCustomOpen] = useState(false)
   const [listId, setListId] = useState<string | null>(null)
 
+  // A cloud poll replaces the commitment object every few seconds, so the
+  // draft is seeded by identity only — otherwise a sync would erase typing.
+  const editing = useRef(commitment)
+  editing.current = commitment
+  const commitmentId = commitment?.id ?? null
+
   useEffect(() => {
     if (!open) return
-    setTitle(commitment?.title ?? '')
-    setDate(commitment?.date ?? defaultDate)
-    setTime(commitment?.time ?? '')
-    setReminder(commitment?.reminderMinutesBefore ?? null)
-    setListId(commitment?.listId ?? null)
-    const minutes = commitment?.reminderMinutesBefore ?? null
+    const current = editing.current
+    setTitle(current?.title ?? '')
+    setDate(current?.date ?? defaultDate)
+    setTime(current?.time ?? '')
+    setReminder(current?.reminderMinutesBefore ?? null)
+    setListId(current?.listId ?? null)
+    const minutes = current?.reminderMinutesBefore ?? null
     const preset = REMINDER_PRESETS.some((p) => p.minutes === minutes)
     setCustomOpen(!preset)
     if (!preset && minutes !== null) {
       setCustomDays(String(Math.max(1, Math.round(minutes / 1440))))
     }
-  }, [open, commitment, defaultDate])
+  }, [open, commitmentId, defaultDate])
 
   const suggestions = useMemo(() => {
     const byId = new Map(lists.map((list) => [list.id, list]))

@@ -1,5 +1,6 @@
 import { formatMinutesUntil, type NowCard as NowCardValue } from '../../lib/nowCard'
 import { formatPlanTime } from '../../lib/timeFormat'
+import { displayTextWithoutUrl, extractUrl } from '../../lib/urls'
 import { ShuffleIcon } from './icons'
 
 type Props = {
@@ -19,6 +20,8 @@ export function NowCard({ card, onComplete, onOpen, onShuffle }: Props) {
 
   const timed = card.kind === 'timed'
   const time = timed ? formatPlanTime(card.task.time) : null
+  const url = extractUrl(card.task.text)
+  const title = url ? displayTextWithoutUrl(card.task.text) || url : card.task.text
 
   return (
     <section className="mos-now" aria-label="Up next">
@@ -44,7 +47,7 @@ export function NowCard({ card, onComplete, onOpen, onShuffle }: Props) {
         onClick={() => onOpen(card.task.id)}
       >
         {time && <span className="mos-time-box">{time}</span>}
-        <span className="mos-now__title">{card.task.text}</span>
+        <span className="mos-now__title">{title}</span>
       </button>
 
       <button
