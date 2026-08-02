@@ -55,18 +55,19 @@
   --overdue: #b8752c;
 }
 
-.mos button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.mos input,
-.mos select {
+/*
+ * Zero-specificity reset (`:where`) so every component rule below can set its
+ * own colour without needing to out-specify the reset.
+ */
+:where(.mos) :where(button, input, select, textarea) {
   font: inherit;
   /* 16px keeps Safari from zooming the page when a field takes focus. */
   font-size: 16px;
   color: inherit;
+}
+
+:where(.mos) :where(button, select) {
+  cursor: pointer;
 }
 
 .mos-visually-hidden {
@@ -408,17 +409,17 @@
 
 .mos-lists__toolbar {
   position: sticky;
-  top: -10px;
+  top: 0;
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
-  background: linear-gradient(
-    to bottom,
-    var(--bg) 72%,
-    color-mix(in srgb, var(--bg) 20%, transparent)
-  );
+  /* Negative margin cancels the scroller's padding so the bar spans edge to
+     edge once it sticks, instead of letting rows slide past beside it. */
+  margin: 0 -12px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(10px);
 }
 
 .mos-field {
@@ -445,22 +446,6 @@
   border: 0;
   background: transparent;
   outline: none;
-}
-
-.mos-select select {
-  height: 38px;
-  padding: 0 26px 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  font-size: 0.8rem;
-  font-weight: 600;
-  appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: calc(100% - 14px) 52%, calc(100% - 10px) 52%;
-  background-size: 4px 4px, 4px 4px;
-  background-repeat: no-repeat;
 }
 
 .mos-lists__stack {

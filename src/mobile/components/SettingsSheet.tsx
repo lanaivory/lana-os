@@ -22,6 +22,28 @@ const PUSH_HINTS: Record<PushUiState, string> = {
   default: 'Get a phone alert when a to-do arrives by text.',
 }
 
+/**
+ * Owns the push hook so the permission/subscription lookup only runs when the
+ * sheet is actually on screen, not on every app load.
+ */
+function NotificationsRow() {
+  const { state, enable } = usePushNotifications()
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`mos-btn${state === 'enabled' ? ' mos-btn--on' : ''}`}
+        disabled={state !== 'default'}
+        onClick={() => void enable()}
+      >
+        {PUSH_LABELS[state]}
+      </button>
+      <p className="mos-sheet__note">{PUSH_HINTS[state]}</p>
+    </>
+  )
+}
+
 type Props = {
   open: boolean
   sortTodayByTime: boolean
@@ -41,23 +63,10 @@ export function SettingsSheet({
   onSortTodayByTimeChange,
   onCheckTexts,
 }: Props) {
-  const push = usePushNotifications()
-  const pushActionable = push.state === 'default' || push.state === 'needs-install'
-
   return (
     <Sheet open={open} title="Settings" onClose={onClose}>
       <SheetGroup label="Notifications">
-        <button
-          type="button"
-          className={`mos-btn${push.state === 'enabled' ? ' mos-btn--on' : ''}`}
-          disabled={!pushActionable}
-          onClick={() => {
-            if (push.state === 'default') void push.enable()
-          }}
-        >
-          {PUSH_LABELS[push.state]}
-        </button>
-        <p className="mos-sheet__note">{PUSH_HINTS[push.state]}</p>
+        <NotificationsRow />
       </SheetGroup>
 
       <SheetGroup label="Text capture">
