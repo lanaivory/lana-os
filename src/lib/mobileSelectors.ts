@@ -1,4 +1,9 @@
-import { findPlaylistContaining, flattenListCardIds, orderedListTasks } from './board'
+import {
+  findPlaylistContaining,
+  flattenListCardIds,
+  orderedListTasks,
+  plannedTaskIds,
+} from './board'
 import { sortTasksForListMode, type ListSortMode } from './listSort'
 import type { AppState, ContextList, PlaylistId, Task } from './types'
 
@@ -8,6 +13,25 @@ export type MobileListSection = {
   tasks: Task[]
   /** Tasks the list owns and that are not planned into a day, ignoring the query. */
   total: number
+}
+
+/** One row of the Lists tab index. */
+export type MobileListOverview = {
+  list: ContextList
+  /** Unplanned tasks the list owns, complete or not. */
+  total: number
+  /** Unplanned tasks still to do. */
+  open: number
+  /** Owned tasks planned into a day, so shown on the Playlist tab instead. */
+  planned: number
+}
+
+/** One result of a cross-list search. */
+export type MobileSearchHit = {
+  task: Task
+  list: ContextList | null
+  /** The day it is planned into, when it is planned at all. */
+  day: PlaylistId | null
 }
 
 export type TaskLocation =
@@ -69,6 +93,66 @@ export function listSections(
   return mobileListOrder(state)
     .map((listId) => listSection(state, listId, opts))
     .filter((section): section is MobileListSection => section !== null)
+}
+
+/** Counts for the Lists tab index, in board order. */
+export function listOverviews(state: AppState): MobileListOverview[] {
+  const planned = plannedTaskIds(state)
+
+  return mobileListOrder(state).flatMap((listId) => {
+    const list = state.lists.find((l) => l.id === listId)
+    if (!list) return []
+
+    const owned = Object.values(state.tasks).filter((t) => t.listId === listId)
+    const unplanned = owned.filter((t) => !planned.has(t.id))
+
+    return [
+      {
+        list,
+        total: unplanned.length,
+        open: unplanned.filter((t) => !t.completed).length,
+        planned: owned.length - unplanned.length,
+      },
+    ]
+  })
+}
+
+/**
+ * Search every task, planned or not, in the order the Lists tab shows them.
+ * Open tasks come first so a match you can still act on is never buried.
+ */
+export function searchTasks(state: AppState, query: string): MobileSearchHit[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return []
+
+  const listById = new Map(state.lists.map((l) => [l.id, l]))
+  const seen = new Set<string>()
+  const hits: MobileSearchHit[] = []
+
+  const consider = (task: Task) => {
+    if (seen.has(task.id)) return
+    seen.add(task.id)
+    if (!task.text.toLowerCase().includes(needle)) return
+    hits.push({
+      task,
+      list: listById.get(task.listId) ?? null,
+      day: findPlaylistContaining(state, task.id),
+    })
+  }
+
+  for (const listId of mobileListOrder(state)) {
+    for (const taskId of orderedListTasks(state, listId)) {
+      const task = taskById(state, taskId)
+      if (task) consider(task)
+    }
+  }
+  // Tasks whose list was deleted still deserve to be findable.
+  for (const task of Object.values(state.tasks)) consider(task)
+
+  return [
+    ...hits.filter((hit) => !hit.task.completed),
+    ...hits.filter((hit) => hit.task.completed),
+  ]
 }
 
 /** Where a task is shown on mobile — a planned day wins over its context list. */
