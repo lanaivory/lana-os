@@ -10,10 +10,12 @@ type Props = {
   task: Task
   lists: ContextList[]
   query: string
-  /** Agenda rows show the planned time; list rows do not. */
+  /** Rows on a dated surface show the planned time; list rows do not. */
   showTime?: boolean
-  /** Agenda rows name the owning context list. */
+  /** Rows outside a single list name the owning context list. */
   showListTag?: boolean
+  /** Search results also name the day the task is planned into. */
+  dayTag?: string | null
   onToggle: (taskId: string) => void
   onOpen: (taskId: string) => void
 }
@@ -24,6 +26,7 @@ export function TaskRow({
   query,
   showTime = false,
   showListTag = false,
+  dayTag = null,
   onToggle,
   onOpen,
 }: Props) {
@@ -63,9 +66,10 @@ export function TaskRow({
         <span className="mos-task__title">
           {title ? <HighlightedText text={title} query={query} /> : url}
         </span>
-        {(time || list) && (
+        {(time || list || dayTag) && (
           <span className="mos-task__meta">
             {time && <span className="mos-task__time">{time}</span>}
+            {dayTag && <span className="mos-task__day">{dayTag}</span>}
             {list && (
               <span
                 className="mos-task__tag"

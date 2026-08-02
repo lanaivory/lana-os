@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_MOBILE_PREFS,
-  isListCollapsed,
   loadMobilePrefs,
   normalizeMobilePrefs,
   saveMobilePrefs,
-  withListCollapsed,
 } from './mobilePrefs'
 
 function stubLocalStorage() {
@@ -35,16 +33,14 @@ describe('mobile prefs', () => {
   })
 
   it('round-trips through localStorage', () => {
-    saveMobilePrefs({
-      agendaDay: 'week',
+    const prefs = {
+      tab: 'calendar',
+      playlistDay: 'week',
+      calendarDay: 'tomorrow',
       listSort: 'az',
-      listCollapse: { errands: true },
-    })
-    expect(loadMobilePrefs()).toEqual({
-      agendaDay: 'week',
-      listSort: 'az',
-      listCollapse: { errands: true },
-    })
+    } as const
+    saveMobilePrefs(prefs)
+    expect(loadMobilePrefs()).toEqual(prefs)
   })
 
   it('adopts the legacy standalone sort key on first load', () => {
@@ -52,44 +48,32 @@ describe('mobile prefs', () => {
     expect(loadMobilePrefs().listSort).toBe('recent')
   })
 
+  it('carries the pre-tabs agenda day over to the playlist tab', () => {
+    store.set(
+      'lana-os:mobile:v1',
+      JSON.stringify({ agendaDay: 'tomorrow', listSort: 'az' }),
+    )
+    expect(loadMobilePrefs()).toEqual({
+      tab: 'playlist',
+      playlistDay: 'tomorrow',
+      calendarDay: 'today',
+      listSort: 'az',
+    })
+  })
+
   it('drops unknown values instead of throwing', () => {
     expect(
       normalizeMobilePrefs({
-        agendaDay: 'someday',
+        tab: 'inbox',
+        playlistDay: 'someday',
+        calendarDay: 7,
         listSort: 'nonsense',
-        listCollapse: { errands: true, reading: 'yes', '': true },
       }),
-    ).toEqual({
-      agendaDay: 'today',
-      listSort: 'custom',
-      listCollapse: { errands: true },
-    })
+    ).toEqual(DEFAULT_MOBILE_PREFS)
   })
 
   it('survives corrupt JSON', () => {
     store.set('lana-os:mobile:v1', '{not json')
     expect(loadMobilePrefs()).toEqual(DEFAULT_MOBILE_PREFS)
-  })
-
-  it('folds empty lists by default and open ones not at all', () => {
-    expect(
-      isListCollapsed(DEFAULT_MOBILE_PREFS, 'reading', { isEmpty: true }),
-    ).toBe(true)
-    expect(
-      isListCollapsed(DEFAULT_MOBILE_PREFS, 'reading', { isEmpty: false }),
-    ).toBe(false)
-  })
-
-  it('lets an explicit choice win over the empty-list default', () => {
-    const opened = withListCollapsed(DEFAULT_MOBILE_PREFS, 'reading', false)
-    expect(isListCollapsed(opened, 'reading', { isEmpty: true })).toBe(false)
-
-    const closed = withListCollapsed(DEFAULT_MOBILE_PREFS, 'reading', true)
-    expect(isListCollapsed(closed, 'reading', { isEmpty: false })).toBe(true)
-  })
-
-  it('returns the same object when the choice is unchanged', () => {
-    const prefs = withListCollapsed(DEFAULT_MOBILE_PREFS, 'reading', true)
-    expect(withListCollapsed(prefs, 'reading', true)).toBe(prefs)
   })
 })

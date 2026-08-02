@@ -9,35 +9,38 @@ function escapeId(value: string): string {
 }
 
 /**
- * Scroll a task row into view inside the mobile scroller and flash it.
- * Scoped to the given container: it never touches the document scroll
- * position, which on iOS would slide the capture bar off-screen.
+ * Scroll a task row into view and flash it. Scrolling is confined to the
+ * screen's own scroller, never the document: on iOS a document scroll would
+ * slide the capture bar and tab bar off-screen.
  */
-export function revealTaskInContainer(
-  container: HTMLElement | null,
+export function revealTask(
+  root: HTMLElement | null,
   taskId: string,
   opts: { highlightMs?: number } = {},
 ): boolean {
-  if (!container) return false
+  if (!root) return false
 
-  const row = container.querySelector<HTMLElement>(
+  const row = root.querySelector<HTMLElement>(
     `[data-mos-task="${escapeId(taskId)}"]`,
   )
   if (!row) return false
 
-  const containerBox = container.getBoundingClientRect()
-  const rowBox = row.getBoundingClientRect()
+  const scroller = row.closest<HTMLElement>('.mos-scroll')
+  if (scroller) {
+    const scrollerBox = scroller.getBoundingClientRect()
+    const rowBox = row.getBoundingClientRect()
 
-  if (rowBox.top < containerBox.top + SCROLL_PADDING_PX) {
-    container.scrollBy({
-      top: rowBox.top - containerBox.top - SCROLL_PADDING_PX,
-      behavior: 'smooth',
-    })
-  } else if (rowBox.bottom > containerBox.bottom - SCROLL_PADDING_PX) {
-    container.scrollBy({
-      top: rowBox.bottom - containerBox.bottom + SCROLL_PADDING_PX,
-      behavior: 'smooth',
-    })
+    if (rowBox.top < scrollerBox.top + SCROLL_PADDING_PX) {
+      scroller.scrollBy({
+        top: rowBox.top - scrollerBox.top - SCROLL_PADDING_PX,
+        behavior: 'smooth',
+      })
+    } else if (rowBox.bottom > scrollerBox.bottom - SCROLL_PADDING_PX) {
+      scroller.scrollBy({
+        top: rowBox.bottom - scrollerBox.bottom + SCROLL_PADDING_PX,
+        behavior: 'smooth',
+      })
+    }
   }
 
   row.classList.add(REVEAL_CLASS)

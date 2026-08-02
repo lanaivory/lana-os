@@ -3,7 +3,8 @@ import { PLAYLIST_CARD_IDS } from '../../lib/board'
 import type { TaskLocation } from '../../lib/mobileSelectors'
 import type { ContextList, PlaylistId, Task } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
-import { Sheet, SheetAction, SheetGroup } from './Sheet'
+import { Group, Row } from './Group'
+import { Sheet } from './Sheet'
 import { ArrowIcon } from './icons'
 
 type Props = {
@@ -74,7 +75,7 @@ export function TaskSheet({
         />
       </form>
 
-      <SheetGroup label="Plan">
+      <Group label="Plan">
         <div className="mos-segments">
           {PLAYLIST_CARD_IDS.map((id) => (
             <button
@@ -96,10 +97,10 @@ export function TaskSheet({
             Unplanned
           </button>
         </div>
-      </SheetGroup>
+      </Group>
 
       {(day === 'today' || day === 'tomorrow') && (
-        <SheetGroup label="Time">
+        <Group label="Time">
           <div className="mos-time-row">
             <input
               type="time"
@@ -120,10 +121,10 @@ export function TaskSheet({
               </button>
             )}
           </div>
-        </SheetGroup>
+        </Group>
       )}
 
-      <SheetGroup label="List">
+      <Group label="List">
         <div className="mos-tag-grid">
           {lists.map((list) => (
             <button
@@ -138,10 +139,10 @@ export function TaskSheet({
             </button>
           ))}
         </div>
-      </SheetGroup>
+      </Group>
 
       {canReorder && (
-        <SheetGroup label="Order">
+        <Group label="Order">
           <div className="mos-order-row">
             <button
               type="button"
@@ -162,21 +163,21 @@ export function TaskSheet({
               Move down
             </button>
           </div>
-        </SheetGroup>
+        </Group>
       )}
 
-      <SheetGroup>
-        <SheetAction
+      <Group>
+        <Row
           label={task.completed ? 'Mark as not done' : 'Mark as done'}
           onClick={() => onToggleComplete(task.id)}
         />
-        <SheetAction
+        <Row
           label="Delete task"
           hint="Recoverable for 24 hours"
           tone="danger"
           onClick={() => onDelete(task.id)}
         />
-      </SheetGroup>
+      </Group>
     </Sheet>
   )
 }

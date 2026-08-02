@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   agendaOpenCount,
   agendaTasks,
+  listOverviews,
   listSection,
   listSections,
   mobileListOrder,
+  searchTasks,
   taskLocation,
 } from './mobileSelectors'
 import { createEmptyState, type AppState, type Task } from './types'
@@ -145,6 +147,63 @@ describe('listSections', () => {
       'reading',
       'errands',
     ])
+  })
+})
+
+describe('listOverviews', () => {
+  it('counts unplanned, open, and planned tasks per list', () => {
+    const state = stateWith([
+      task({ id: 'a', text: 'Buy milk', listId: 'errands' }),
+      task({ id: 'b', text: 'Buy stamps', listId: 'errands', completed: true }),
+      task({ id: 'c', text: 'Call bank', listId: 'errands' }),
+      task({ id: 'd', text: 'Read paper', listId: 'reading' }),
+    ])
+    state.boardColumns = [['today'], ['errands', 'reading']]
+    state.playlists.today = ['c']
+
+    expect(
+      listOverviews(state).map(({ list, total, open, planned }) => ({
+        id: list.id,
+        total,
+        open,
+        planned,
+      })),
+    ).toEqual([
+      { id: 'errands', total: 2, open: 1, planned: 1 },
+      { id: 'reading', total: 1, open: 1, planned: 0 },
+    ])
+  })
+})
+
+describe('searchTasks', () => {
+  it('finds planned and unplanned tasks, open ones first', () => {
+    const state = stateWith([
+      task({ id: 'a', text: 'Buy milk', listId: 'errands', completed: true }),
+      task({ id: 'b', text: 'Buy stamps', listId: 'errands' }),
+      task({ id: 'c', text: 'Buy a book', listId: 'reading' }),
+      task({ id: 'd', text: 'Call bank', listId: 'errands' }),
+    ])
+    state.boardColumns = [['today'], ['errands', 'reading']]
+    state.listOrders = { errands: ['a', 'b', 'd'] }
+    state.playlists.today = ['c']
+
+    const hits = searchTasks(state, '  BUY ')
+    expect(hits.map((hit) => hit.task.id)).toEqual(['b', 'c', 'a'])
+    expect(hits[1].list?.id).toBe('reading')
+    expect(hits[1].day).toBe('today')
+    expect(hits[0].day).toBeNull()
+  })
+
+  it('still finds a task whose list was deleted', () => {
+    const state = stateWith([task({ id: 'a', text: 'Orphan', listId: 'gone' })])
+    const hits = searchTasks(state, 'orphan')
+    expect(hits.map((hit) => hit.task.id)).toEqual(['a'])
+    expect(hits[0].list).toBeNull()
+  })
+
+  it('returns nothing for a blank query', () => {
+    const state = stateWith([task({ id: 'a', text: 'Buy milk', listId: 'errands' })])
+    expect(searchTasks(state, '   ')).toEqual([])
   })
 })
 

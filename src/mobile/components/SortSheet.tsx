@@ -3,7 +3,8 @@ import {
   LIST_SORT_MODES,
   type ListSortMode,
 } from '../../lib/listSort'
-import { Sheet, SheetAction } from './Sheet'
+import { Row } from './Group'
+import { Sheet } from './Sheet'
 
 const SORT_HINTS: Record<ListSortMode, string> = {
   custom: 'The order you arranged by hand',
@@ -20,12 +21,13 @@ type Props = {
 
 export function SortSheet({ open, sort, onClose, onSelect }: Props) {
   return (
-    <Sheet open={open} title="Sort lists" onClose={onClose} layer="stacked">
+    <Sheet open={open} title="Sort tasks" onClose={onClose} layer="stacked">
       {LIST_SORT_MODES.map((mode) => (
-        <SheetAction
+        <Row
           key={mode}
-          label={`${LIST_SORT_LABELS[mode]}${mode === sort ? '  ✓' : ''}`}
+          label={LIST_SORT_LABELS[mode]}
           hint={SORT_HINTS[mode]}
+          selected={mode === sort}
           onClick={() => {
             onSelect(mode)
             onClose()

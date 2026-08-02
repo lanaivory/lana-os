@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ContextList } from '../../lib/types'
-import { Sheet, SheetAction, SheetGroup } from './Sheet'
+import { Group, Row } from './Group'
+import { Sheet } from './Sheet'
 
 type Props = {
   list: ContextList | null
@@ -52,9 +53,9 @@ export function ListSheet({
         />
       </form>
 
-      <SheetGroup>
-        <SheetAction label="Reorder lists" onClick={onStartReorder} />
-        <SheetAction
+      <Group>
+        <Row label="Reorder lists" onClick={onStartReorder} />
+        <Row
           label="Delete list"
           hint={
             taskCount === 0
@@ -64,7 +65,7 @@ export function ListSheet({
           tone="danger"
           onClick={() => onDelete(list.id)}
         />
-      </SheetGroup>
+      </Group>
     </Sheet>
   )
 }
