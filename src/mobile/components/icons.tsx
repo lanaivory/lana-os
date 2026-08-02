@@ -74,8 +74,9 @@ export function MoreIcon() {
 export function UndoIcon() {
   return (
     <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden>
-      <path d="M12.5 4.5L7 10l5.5 5.5" {...STROKE} strokeWidth="1.8" />
-      <path d="M7.2 10H16" {...STROKE} strokeWidth="1.8" />
+      {/* Curved, so it never reads as the back control beside it. */}
+      <path d="M4 7.5h8a4.5 4.5 0 1 1 0 9H8.5" {...STROKE} strokeWidth="1.8" />
+      <path d="M7 4L3.5 7.5 7 11" {...STROKE} strokeWidth="1.8" />
     </svg>
   )
 }
