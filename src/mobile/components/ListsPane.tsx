@@ -1,11 +1,9 @@
-import {
-  LIST_SORT_LABELS,
-  LIST_SORT_MODES,
-  type ListSortMode,
-} from '../../lib/listSort'
+import { useState } from 'react'
+import { LIST_SORT_LABELS, type ListSortMode } from '../../lib/listSort'
 import type { MobileListSection } from '../../lib/mobileSelectors'
 import type { ContextList } from '../../lib/types'
 import { ListSection } from './ListSection'
+import { SortSheet } from './SortSheet'
 import { SearchIcon } from './icons'
 
 type Props = {
@@ -43,6 +41,8 @@ export function ListsPane({
   onOpenTask,
   onAddTask,
 }: Props) {
+  const [sortOpen, setSortOpen] = useState(false)
+
   return (
     <section className="mos-lists" aria-label="Lists">
       <div className="mos-lists__toolbar">
@@ -57,19 +57,14 @@ export function ListsPane({
           />
         </label>
 
-        <label className="mos-select">
-          <span className="mos-visually-hidden">Sort lists</span>
-          <select
-            value={sort}
-            onChange={(event) => onSortChange(event.target.value as ListSortMode)}
-          >
-            {LIST_SORT_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {LIST_SORT_LABELS[mode]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <button
+          type="button"
+          className={`mos-chip${sort === 'custom' ? '' : ' is-active'}`}
+          aria-label={`Sort lists, currently ${LIST_SORT_LABELS[sort]}`}
+          onClick={() => setSortOpen(true)}
+        >
+          {LIST_SORT_LABELS[sort]}
+        </button>
 
         <button
           type="button"
@@ -101,6 +96,13 @@ export function ListsPane({
           />
         ))}
       </div>
+
+      <SortSheet
+        open={sortOpen}
+        sort={sort}
+        onClose={() => setSortOpen(false)}
+        onSelect={onSortChange}
+      />
     </section>
   )
 }
