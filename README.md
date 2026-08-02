@@ -18,9 +18,21 @@ npm run build
 
 ## Layout
 
-- Top header: title, Find (`⌘K`), Enable notifications, Undo, Clear Completed, + New List, theme toggle, settings
-- Multi-column masonry board of list cards
+Both views share one store, one capture pipeline, and one cloud state. `src/App.tsx` picks between them at 768px.
+
+**Desktop** (`src/desktop/`)
+
+- Top header: title, Find (`⌘K`), Undo, Clear Completed, + New List, theme toggle, settings
+- Multi-column masonry board of list cards, drag-and-drop planning
 - Capture bar pinned to the bottom (messaging-app style)
+
+**Mobile** (`src/mobile/`, ≤768px including the installed PWA)
+
+- Agenda on top: Today / Tomorrow / This Week, one day at a time, tap or swipe to change
+- Collapsible stack of every context list below, with filter, sort, and a reorder mode
+- Tap a task for a sheet that plans it into a day, sets a time, refiles it, reorders it, or deletes it — no touch drag-and-drop
+- Capture bar pinned above the keyboard
+- View state (agenda day, sort, folded lists) is per device in `lana-os:mobile:v1`, so a phone never fights the desktop board over synced state
 
 ## Model
 
