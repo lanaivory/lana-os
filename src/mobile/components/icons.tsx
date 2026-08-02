@@ -100,6 +100,41 @@ export function PlusIcon() {
   )
 }
 
+export function PinIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+      <path
+        d="M12.4 2.6l5 5-2.1.6-3.3 3.3-.4 3.3-4.4-4.4L3 15.6l1.2-4.6 4.2-4.2.6-3.6z"
+        {...STROKE}
+        strokeWidth="1.6"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </svg>
+  )
+}
+
+export function ShuffleIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden>
+      <path d="M3 5.5h3l7 9h4M3 14.5h3l2.2-2.8M11.6 7.4L13 5.5h4" {...STROKE} strokeWidth="1.7" />
+      <path d="M15 3.4l2.2 2.1L15 7.6M15 12.4l2.2 2.1L15 16.6" {...STROKE} strokeWidth="1.7" />
+    </svg>
+  )
+}
+
+export function BellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="13" height="13" aria-hidden>
+      <path
+        d="M5.5 8.2a4.5 4.5 0 0 1 9 0c0 3 .9 4.3 1.4 4.8H4.1c.5-.5 1.4-1.8 1.4-4.8z"
+        {...STROKE}
+        strokeWidth="1.5"
+      />
+      <path d="M8.4 15.4a1.8 1.8 0 0 0 3.2 0" {...STROKE} strokeWidth="1.5" />
+    </svg>
+  )
+}
+
 /* ------------------------------------------------------------- tab icons */
 
 export function PlaylistTabIcon() {

@@ -9,31 +9,38 @@ import { CheckIcon, LinkIcon } from './icons'
 type Props = {
   task: Task
   lists: ContextList[]
-  query: string
-  /** Rows on a dated surface show the planned time; list rows do not. */
-  showTime?: boolean
-  /** Rows outside a single list name the owning context list. */
-  showListTag?: boolean
-  /** Search results also name the day the task is planned into. */
-  dayTag?: string | null
+  query?: string
+  /**
+   * The list this surface is already about. A row only names its list when it
+   * differs, so a list's own rows stay quiet.
+   */
+  contextListId?: string | null
+  /** Search results also say which day the task is planned into. */
+  dayLabel?: string | null
   onToggle: (taskId: string) => void
   onOpen: (taskId: string) => void
 }
 
+/**
+ * One scannable line: checkbox, the time in a box on the left when there is
+ * one, the title, and the owning list named plainly at the end.
+ */
 export function TaskRow({
   task,
   lists,
-  query,
-  showTime = false,
-  showListTag = false,
-  dayTag = null,
+  query = '',
+  contextListId = null,
+  dayLabel = null,
   onToggle,
   onOpen,
 }: Props) {
   const url = extractUrl(task.text)
   const title = url ? displayTextWithoutUrl(task.text) : task.text
-  const time = showTime ? formatPlanTime(task.time) : null
-  const list = showListTag ? lists.find((l) => l.id === task.listId) : undefined
+  const time = formatPlanTime(task.time)
+  const list =
+    task.listId === contextListId
+      ? undefined
+      : lists.find((l) => l.id === task.listId)
 
   return (
     <li
@@ -57,22 +64,23 @@ export function TaskRow({
         <CheckIcon />
       </button>
 
+      {time && <span className="mos-time-box">{time}</span>}
+
       <button
         type="button"
         className="mos-task__body"
         onClick={() => onOpen(task.id)}
-        aria-label={`Open actions for ${task.text}`}
+        aria-label={`Edit ${task.text}`}
       >
         <span className="mos-task__title">
           {title ? <HighlightedText text={title} query={query} /> : url}
         </span>
-        {(time || list || dayTag) && (
-          <span className="mos-task__meta">
-            {time && <span className="mos-task__time">{time}</span>}
-            {dayTag && <span className="mos-task__day">{dayTag}</span>}
+        {(dayLabel || list) && (
+          <span className="mos-task__trailing">
+            {dayLabel && <span className="mos-task__day">{dayLabel}</span>}
             {list && (
               <span
-                className="mos-task__tag"
+                className="mos-task__list"
                 style={{ '--tag': list.color } as CSSProperties}
               >
                 {list.name}

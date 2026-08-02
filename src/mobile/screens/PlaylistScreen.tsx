@@ -1,8 +1,13 @@
 import { PLAYLIST_CARD_IDS } from '../../lib/board'
+import { commitmentsForDay } from '../../lib/commitments'
 import { agendaTasks } from '../../lib/mobileSelectors'
+import type { NowCard as NowCardValue } from '../../lib/nowCard'
 import type { AppState, PlaylistId } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
+import { CommitmentRow } from '../components/CommitmentRow'
+import { CompletedSection } from '../components/CompletedSection'
 import { DayTabs } from '../components/DayTabs'
+import { NowCard } from '../components/NowCard'
 import { PlusIcon } from '../components/icons'
 import { TaskRow } from '../components/TaskRow'
 import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe'
@@ -11,24 +16,39 @@ type Props = {
   state: AppState
   day: PlaylistId
   liveDate: string
+  todayKey: string
+  nowCard: NowCardValue
+  completedOpen: boolean
   onDayChange: (day: PlaylistId) => void
+  onShuffle: () => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
+  onToggleCommitment: (id: string) => void
+  onOpenCommitment: (id: string) => void
+  onToggleCompletedOpen: () => void
+  onClearCompleted: (taskIds: string[]) => void
   onPlanFromLists: () => void
 }
 
 /**
- * The plan for a day: one playlist at a time, in the order it will be worked.
- * Only the selected day is mounted, so the screen is exactly as tall as what
- * it shows and page scrolling stays native.
+ * The plan for a day: what to do next at the top, then the rest in the order
+ * it will be worked, then what is already finished, folded away.
  */
 export function PlaylistScreen({
   state,
   day,
   liveDate,
+  todayKey,
+  nowCard,
+  completedOpen,
   onDayChange,
+  onShuffle,
   onToggleTask,
   onOpenTask,
+  onToggleCommitment,
+  onOpenCommitment,
+  onToggleCompletedOpen,
+  onClearCompleted,
   onPlanFromLists,
 }: Props) {
   const index = PLAYLIST_CARD_IDS.indexOf(day)
@@ -42,7 +62,9 @@ export function PlaylistScreen({
   })
 
   const tasks = agendaTasks(state, day)
-  const done = tasks.filter((task) => task.completed).length
+  const open = tasks.filter((task) => !task.completed)
+  const done = tasks.filter((task) => task.completed)
+  const commitments = commitmentsForDay(state, day, todayKey)
 
   return (
     <div className="mos-scroll" {...swipe}>
@@ -54,31 +76,65 @@ export function PlaylistScreen({
       />
 
       <section className="mos-day" key={day} aria-label={PLAYLIST_META[day].name}>
+        {day === 'today' && (
+          <NowCard
+            card={nowCard}
+            onComplete={onToggleTask}
+            onOpen={onOpenTask}
+            onShuffle={onShuffle}
+          />
+        )}
+
         <p className="mos-day__caption">
           {day === 'today' ? liveDate : PLAYLIST_META[day].hint}
-          {tasks.length > 0 && ` · ${done}/${tasks.length} done`}
+          {tasks.length > 0 && ` · ${done.length}/${tasks.length} done`}
         </p>
 
-        {tasks.length === 0 ? (
-          <p className="mos-empty">
-            Nothing planned yet. Pull a few tasks over from your lists.
-          </p>
-        ) : (
+        {commitments.length > 0 && (
           <ul className="mos-tasks">
-            {tasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
+            {commitments.map((commitment) => (
+              <CommitmentRow
+                key={commitment.id}
+                commitment={commitment}
                 lists={state.lists}
-                query=""
-                showTime={day !== 'week'}
-                showListTag
-                onToggle={onToggleTask}
-                onOpen={onOpenTask}
+                todayKey={todayKey}
+                showDate={day !== 'today'}
+                onToggle={onToggleCommitment}
+                onOpen={onOpenCommitment}
               />
             ))}
           </ul>
         )}
+
+        {open.length === 0 && commitments.length === 0 ? (
+          <p className="mos-empty">
+            Nothing planned yet. Pull a few tasks over from your lists.
+          </p>
+        ) : (
+          open.length > 0 && (
+            <ul className="mos-tasks">
+              {open.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  lists={state.lists}
+                  onToggle={onToggleTask}
+                  onOpen={onOpenTask}
+                />
+              ))}
+            </ul>
+          )
+        )}
+
+        <CompletedSection
+          tasks={done}
+          lists={state.lists}
+          open={completedOpen}
+          onToggleOpen={onToggleCompletedOpen}
+          onClear={() => onClearCompleted(done.map((task) => task.id))}
+          onToggleTask={onToggleTask}
+          onOpenTask={onOpenTask}
+        />
 
         <button type="button" className="mos-ghost-btn" onClick={onPlanFromLists}>
           <PlusIcon />

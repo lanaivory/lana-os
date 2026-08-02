@@ -139,6 +139,29 @@ const RULES: Rule[] = [
 ]
 
 /**
+ * Every rule the text matches, in priority order — the raw material behind
+ * the two or three list chips the capture sheet offers.
+ * Empty when nothing matched, which is what "the classifier is unsure" means.
+ */
+export function rankLists(text: string): ClassifyResult[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+
+  const hits: ClassifyResult[] = []
+  for (const rule of RULES) {
+    if (!rule.patterns.some((p) => p.test(trimmed))) continue
+    if (hits.some((hit) => hit.listId === rule.listId)) continue
+    hits.push({ listId: rule.listId, reason: rule.reason })
+  }
+  return hits
+}
+
+/** True when no keyword or URL rule claimed the text. */
+export function isUnsureText(text: string): boolean {
+  return rankLists(text).length === 0
+}
+
+/**
  * Choose the best context list for a task string.
  * URLs always win; otherwise first matching keyword rule; else Random.
  */
@@ -148,11 +171,5 @@ export function classifyTask(text: string): ClassifyResult {
     return { listId: 'random', reason: 'empty' }
   }
 
-  for (const rule of RULES) {
-    if (rule.patterns.some((p) => p.test(trimmed))) {
-      return { listId: rule.listId, reason: rule.reason }
-    }
-  }
-
-  return { listId: 'random', reason: 'fallback' }
+  return rankLists(trimmed)[0] ?? { listId: 'random', reason: 'fallback' }
 }

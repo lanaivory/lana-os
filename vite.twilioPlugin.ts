@@ -1,4 +1,5 @@
 import type { Plugin } from 'vite'
+import { fetchCalendarFeed } from './server/calendarFeed.ts'
 import { filterOutIngestedSids } from './server/ingestedSids.ts'
 import { assertPasscode } from './server/passcode.ts'
 import {
@@ -6,6 +7,7 @@ import {
   parsePushSubscription,
   removePushSubscription,
 } from './server/pushStore.ts'
+import { runDueReminders } from './server/reminders.ts'
 import { ingestSmsIntoCloudState } from './server/smsBoard.ts'
 import {
   buildSmsConfirmation,
@@ -159,6 +161,55 @@ export function twilioInboxPlugin(): Plugin {
         res.statusCode = 405
         res.setHeader('Allow', 'GET, POST')
         sendJson(res, 405, { error: 'Method Not Allowed' })
+      })
+
+      server.middlewares.use('/api/capture-number', (req, res) => {
+        if (req.method && req.method !== 'GET') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'GET')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+        sendJson(res, 200, { number: process.env.TWILIO_NUMBER?.trim() ?? '' })
+      })
+
+      server.middlewares.use('/api/reminders', async (req, res) => {
+        if (req.method && req.method !== 'GET' && req.method !== 'POST') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'GET, POST')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+        try {
+          sendJson(res, 200, await runDueReminders())
+        } catch {
+          sendJson(res, 200, { sent: 0, due: 0, saved: false })
+        }
+      })
+
+      server.middlewares.use('/api/gcal', async (req, res) => {
+        if (req.method && req.method !== 'GET') {
+          res.statusCode = 405
+          res.setHeader('Allow', 'GET')
+          sendJson(res, 405, { error: 'Method Not Allowed' })
+          return
+        }
+        const url =
+          new URL(req.url ?? '', 'http://localhost').searchParams
+            .get('url')
+            ?.trim() ?? ''
+        if (!url) {
+          sendJson(res, 400, { error: 'Expected a url parameter' })
+          return
+        }
+        const result = await fetchCalendarFeed(url)
+        if (!result.ok) {
+          sendJson(res, result.status, { error: result.error })
+          return
+        }
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
+        res.end(result.text)
       })
 
       server.middlewares.use('/api/push-public-key', async (req, res) => {

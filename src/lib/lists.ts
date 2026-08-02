@@ -78,7 +78,12 @@ export function migrateCanonicalLists(
   const lists = DEFAULT_LISTS.map((def) => {
     const existing = prevById.get(def.id)
     return existing
-      ? { ...def, collapsed: existing.collapsed, color: existing.color || def.color }
+      ? {
+          ...def,
+          collapsed: existing.collapsed,
+          color: existing.color || def.color,
+          pinned: existing.pinned,
+        }
       : { ...def }
   })
   const validIds = new Set(lists.map((l) => l.id))

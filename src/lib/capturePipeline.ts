@@ -1,5 +1,5 @@
 import { withListOrderAppend } from './board'
-import { classifyTask } from './classifier'
+import { classifyTask, isUnsureText } from './classifier'
 import { createId } from './id'
 import { splitCaptureText } from './parseCapture'
 import { smsTaskId } from './smsTaskIds'
@@ -54,8 +54,13 @@ export function applyCaptureToState(
   const sid = opts.messageSid?.trim()
 
   pieces.forEach((text, index) => {
-    const classified = classifyTask(text)
-    const listId = resolveActiveListId(prev, classified.listId)
+    const unsure = isUnsureText(text)
+    // An unsure capture still lands somewhere; "Ask me" just flags it so the
+    // Lists tab can offer it a real home instead of burying it in the fallback.
+    const preferred = unsure
+      ? (prev.unsureListId ?? classifyTask(text).listId)
+      : classifyTask(text).listId
+    const listId = resolveActiveListId(prev, preferred)
     const { playlistId } = routeTimingWords(text)
     const id = sid ? smsTaskId(sid, index) : createId()
     // Inbox re-poll / webhook + poll: keep the deterministic SMS id stable.
@@ -71,6 +76,7 @@ export function applyCaptureToState(
       overdue: false,
       // Fresh captures always get the short-lived "new" marker (UI expires at 2h).
       isNew: true,
+      ...(unsure && prev.unsureCapture !== 'file' ? { needsTriage: true } : {}),
     }
     tasks[id] = task
     createdIds.push(id)

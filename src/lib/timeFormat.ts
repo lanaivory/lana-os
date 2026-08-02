@@ -1,3 +1,14 @@
+/** Minutes since midnight for an `HH:MM` value, or null when unusable. */
+export function parseTimeMinutes(time: string | null | undefined): number | null {
+  if (!time) return null
+  const [rawHours, rawMinutes] = time.split(':')
+  const hours = Number(rawHours)
+  const minutes = Number(rawMinutes)
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null
+  return hours * 60 + minutes
+}
+
 /**
  * Compact 12-hour label for an `HH:MM` planning time — "7am", "7:45am".
  * Returns null for empty or malformed values so callers can skip the chip.

@@ -48,6 +48,9 @@ function baseState(overrides: Partial<AppState> = {}): AppState {
     listOrders: {},
     listsVersion: LISTS_VERSION,
     trash: [],
+    commitments: [],
+    unsureCapture: 'ask',
+    unsureListId: 'random',
     ...overrides,
   }
 }

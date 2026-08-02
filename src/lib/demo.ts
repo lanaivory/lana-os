@@ -1,7 +1,7 @@
 import { defaultBoardColumns } from './board'
 import { localDateKey } from './storage'
-import type { AppState, Task } from './types'
-import { DEFAULT_LISTS, LISTS_VERSION } from './types'
+import type { AppState, Commitment, Task } from './types'
+import { DEFAULT_LISTS, DEFAULT_UNSURE_LIST_ID, LISTS_VERSION } from './types'
 
 /**
  * Seed a lively first-run board. Pure data helper — does not touch classifier/timing/rollover.
@@ -88,6 +88,39 @@ export function createDemoState(now = Date.now()): AppState {
 
   const lists = DEFAULT_LISTS.map((l) => ({ ...l, collapsed: false }))
 
+  const dateIn = (days: number): string => {
+    const date = new Date(now)
+    date.setDate(date.getDate() + days)
+    return localDateKey(date)
+  }
+
+  const commitments: Commitment[] = [
+    {
+      id: 'c1',
+      title: 'Dentist checkup',
+      date: dateIn(2),
+      time: '14:30',
+      reminderMinutesBefore: 60,
+      reminderAt: null,
+      reminderSentAt: null,
+      listId: 'appointments',
+      done: false,
+      createdAt: now - 60_000,
+    },
+    {
+      id: 'c2',
+      title: 'Quarterly taxes due',
+      date: dateIn(12),
+      time: null,
+      reminderMinutesBefore: 1440,
+      reminderAt: null,
+      reminderSentAt: null,
+      listId: null,
+      done: false,
+      createdAt: now - 60_000,
+    },
+  ]
+
   return {
     tasks,
     lists,
@@ -118,5 +151,8 @@ export function createDemoState(now = Date.now()): AppState {
     },
     listsVersion: LISTS_VERSION,
     trash: [],
+    commitments,
+    unsureCapture: 'ask',
+    unsureListId: DEFAULT_UNSURE_LIST_ID,
   }
 }
