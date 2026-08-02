@@ -41,6 +41,9 @@ import type {
 } from '../lib/types'
 import { LIST_COLORS } from '../lib/types'
 
+/** Full store API shared by the desktop board and the mobile app. */
+export type LanaStore = ReturnType<typeof useLanaStore>
+
 const UNDO_LIMIT = 30
 const CLOUD_SAVE_DEBOUNCE_MS = 600
 const CLOUD_POLL_MS = 12_000
