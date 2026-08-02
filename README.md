@@ -28,11 +28,18 @@ Both views share one store, one capture pipeline, and one cloud state. `src/App.
 
 **Mobile** (`src/mobile/`, ≤768px including the installed PWA)
 
-- Agenda on top: Today / Tomorrow / This Week, one day at a time, tap or swipe to change
-- Collapsible stack of every context list below, with filter, sort, and a reorder mode
-- Tap a task for a sheet that plans it into a day, sets a time, refiles it, reorders it, or deletes it — no touch drag-and-drop
-- Capture bar pinned above the keyboard
-- View state (agenda day, sort, folded lists) is per device in `lana-os:mobile:v1`, so a phone never fights the desktop board over synced state
+Four tabs on a bottom bar, one shared store:
+
+| Tab | What it is |
+| --- | --- |
+| **Playlist** | The plan for a day. Today / Tomorrow / This Week, one at a time, tap or swipe to change; "Add from lists" pulls unplanned tasks in |
+| **Lists** | Index of every context list with open counts; tap to drill in, or search across all lists at once |
+| **Calendar** | Hour timeline for Today and Tomorrow built from each task's time, with a now line, a tray of tasks waiting for a time, and tap-an-hour to schedule one |
+| **Settings** | Planning, list management, Recently deleted, notifications, text capture, theme |
+
+- Tap a task anywhere for a sheet that plans it into a day, sets a time, refiles it, reorders it, or deletes it — no touch drag-and-drop
+- Capture bar pinned above the keyboard on every tab but Settings; a captured thought that lands off-screen is confirmed with a note instead of yanking you to another tab
+- View state (active tab, playlist day, calendar day, sort) is per device in `lana-os:mobile:v1`, so a phone never fights the desktop board over synced state
 
 ## Model
 

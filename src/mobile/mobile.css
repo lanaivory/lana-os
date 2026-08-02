@@ -770,6 +770,8 @@
 
 .mos-toast {
   flex: 0 0 auto;
+  align-self: center;
+  max-width: calc(100% - 24px);
   margin: 0 12px 8px;
   padding: 9px 14px;
   border: 1px solid var(--line-strong);
