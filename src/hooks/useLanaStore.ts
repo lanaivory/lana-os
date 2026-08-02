@@ -12,6 +12,7 @@ import {
   resolveActiveListId,
 } from '../lib/capturePipeline'
 import { classifyTask } from '../lib/classifier'
+import { withResolvedReminder } from '../lib/commitments'
 import {
   fetchCloudState,
   pushCloudState,
@@ -34,10 +35,12 @@ import {
 } from '../lib/trash'
 import type {
   AppState,
+  Commitment,
   PlaylistId,
   Task,
   ThemeMode,
   TrashEntry,
+  UnsureCaptureMode,
 } from '../lib/types'
 import { LIST_COLORS } from '../lib/types'
 
@@ -266,9 +269,25 @@ export function useLanaStore() {
           ...prev,
           tasks: {
             ...prev.tasks,
-            [taskId]: { ...task, listId, isNew: false },
+            // Choosing a list is exactly what triage was waiting for.
+            [taskId]: { ...task, listId, isNew: false, needsTriage: false },
           },
           listOrders,
+        }
+      })
+    },
+    [commit],
+  )
+
+  /** Accept the list a task already sits in and clear it out of triage. */
+  const keepTaskList = useCallback(
+    (taskId: string) => {
+      commit((prev) => {
+        const task = prev.tasks[taskId]
+        if (!task?.needsTriage) return prev
+        return {
+          ...prev,
+          tasks: { ...prev.tasks, [taskId]: { ...task, needsTriage: false } },
         }
       })
     },
@@ -348,6 +367,20 @@ export function useLanaStore() {
   const permanentlyDeleteFromTrash = useCallback(
     (entry: TrashEntry) => {
       commit((prev) => permanentlyDeleteTrashEntry(prev, entry))
+    },
+    [commit],
+  )
+
+  /** Clear just the completed tasks a surface is showing. */
+  const clearCompletedTasks = useCallback(
+    (taskIds: string[]) => {
+      commit((prev) => {
+        let next = prev
+        for (const id of taskIds) {
+          if (prev.tasks[id]?.completed) next = softDeleteTask(next, id)
+        }
+        return next
+      })
     },
     [commit],
   )
@@ -638,6 +671,102 @@ export function useLanaStore() {
     [commit],
   )
 
+  const toggleListPinned = useCallback(
+    (listId: string) => {
+      commit((prev) => ({
+        ...prev,
+        lists: prev.lists.map((list) =>
+          list.id === listId ? { ...list, pinned: !list.pinned } : list,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  /** Create a dated commitment; the reminder moment resolves on this device. */
+  const addCommitment = useCallback(
+    (input: Omit<Commitment, 'id' | 'createdAt' | 'reminderAt' | 'reminderSentAt' | 'done'> &
+      Partial<Pick<Commitment, 'done'>>): string => {
+      const id = createId()
+      commit((prev) => ({
+        ...prev,
+        commitments: [
+          ...(prev.commitments ?? []),
+          withResolvedReminder({
+            ...input,
+            id,
+            done: input.done ?? false,
+            reminderAt: null,
+            reminderSentAt: null,
+            createdAt: Date.now(),
+          }),
+        ],
+      }))
+      return id
+    },
+    [commit],
+  )
+
+  const updateCommitment = useCallback(
+    (id: string, patch: Partial<Omit<Commitment, 'id' | 'createdAt'>>) => {
+      commit((prev) => {
+        const current = prev.commitments ?? []
+        if (!current.some((c) => c.id === id)) return prev
+        return {
+          ...prev,
+          commitments: current.map((commitment) => {
+            if (commitment.id !== id) return commitment
+            const next = { ...commitment, ...patch }
+            // Any change to when it happens re-arms the reminder.
+            const rescheduled =
+              next.date !== commitment.date ||
+              next.time !== commitment.time ||
+              next.reminderMinutesBefore !== commitment.reminderMinutesBefore
+            return withResolvedReminder(
+              rescheduled ? { ...next, reminderSentAt: null } : next,
+            )
+          }),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const deleteCommitment = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        commitments: (prev.commitments ?? []).filter((c) => c.id !== id),
+      }))
+    },
+    [commit],
+  )
+
+  const toggleCommitmentDone = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        commitments: (prev.commitments ?? []).map((commitment) =>
+          commitment.id === id
+            ? { ...commitment, done: !commitment.done }
+            : commitment,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  const setUnsureCapture = useCallback(
+    (mode: UnsureCaptureMode, listId?: string) => {
+      setState((prev) => ({
+        ...prev,
+        unsureCapture: mode,
+        unsureListId: listId ?? prev.unsureListId,
+      }))
+    },
+    [],
+  )
+
   const setTheme = useCallback((theme: ThemeMode) => {
     setState((prev) => ({ ...prev, theme }))
   }, [])
@@ -690,6 +819,7 @@ export function useLanaStore() {
     refreshFromCloud,
     clearNew,
     setTaskList,
+    keepTaskList,
     setTaskText,
     setTaskTime,
     toggleComplete,
@@ -698,6 +828,7 @@ export function useLanaStore() {
     restoreFromTrash,
     permanentlyDeleteFromTrash,
     clearCompleted,
+    clearCompletedTasks,
     addToPlaylist,
     removeFromPlaylist,
     reorderPlaylist,
@@ -713,6 +844,12 @@ export function useLanaStore() {
     togglePlaylistCollapsed,
     createList,
     renameList,
+    toggleListPinned,
+    addCommitment,
+    updateCommitment,
+    deleteCommitment,
+    toggleCommitmentDone,
+    setUnsureCapture,
     addTaskToList,
     addTaskToPlaylist,
     setTheme,

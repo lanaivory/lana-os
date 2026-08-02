@@ -34,10 +34,17 @@ describe('mobile prefs', () => {
 
   it('round-trips through localStorage', () => {
     const prefs = {
+      ...DEFAULT_MOBILE_PREFS,
       tab: 'calendar',
       playlistDay: 'week',
-      calendarDay: 'tomorrow',
       listSort: 'az',
+      agendaView: 'upcoming',
+      accent: 'sage',
+      nowLeadMinutes: 15,
+      shuffleSource: 'all',
+      onboarded: true,
+      captureNumber: '+15551234567',
+      calendarFeedUrl: 'https://example.com/basic.ics',
     } as const
     saveMobilePrefs(prefs)
     expect(loadMobilePrefs()).toEqual(prefs)
@@ -54,9 +61,8 @@ describe('mobile prefs', () => {
       JSON.stringify({ agendaDay: 'tomorrow', listSort: 'az' }),
     )
     expect(loadMobilePrefs()).toEqual({
-      tab: 'playlist',
+      ...DEFAULT_MOBILE_PREFS,
       playlistDay: 'tomorrow',
-      calendarDay: 'today',
       listSort: 'az',
     })
   })
@@ -66,8 +72,10 @@ describe('mobile prefs', () => {
       normalizeMobilePrefs({
         tab: 'inbox',
         playlistDay: 'someday',
-        calendarDay: 7,
         listSort: 'nonsense',
+        accent: 'neon',
+        nowLeadMinutes: 90,
+        shuffleSource: 'everything',
       }),
     ).toEqual(DEFAULT_MOBILE_PREFS)
   })
