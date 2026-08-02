@@ -1538,8 +1538,9 @@ body.is-resizing * {
   .topbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    gap: 8px;
+    /* Extra top inset so the trash badge clears the status bar / notch. */
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 12px 8px;
   }
 
   .topbar__brand {
@@ -1557,11 +1558,18 @@ body.is-resizing * {
     justify-content: flex-start;
     gap: 8px;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
+    /* Room for badges that sit slightly above the icon box. */
+    padding-top: 4px;
     padding-bottom: 2px;
+  }
+
+  .topbar__badge {
+    top: -2px;
+    right: -2px;
   }
 
   .topbar__actions::-webkit-scrollbar {
@@ -1622,18 +1630,16 @@ body.is-resizing * {
   }
 
   /*
-   * Fixed agenda height so the pager cannot collapse to header-only.
-   * Task rows scroll vertically inside each day page.
+   * Agenda sizes to active-page content (height set in MobileAgenda.tsx)
+   * up to a cap — never reserves a fixed empty 40dvh band.
    */
   .mobile-agenda {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
-    height: 40vh;
-    height: 40dvh;
-    min-height: 220px;
-    max-height: 50vh;
-    max-height: 50dvh;
+    height: auto;
+    max-height: min(42dvh, 360px);
+    min-height: 0;
     overflow: hidden;
     border-bottom: 1px solid var(--line);
     background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
@@ -1643,15 +1649,15 @@ body.is-resizing * {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 12px 4px;
+    gap: 4px;
+    padding: 6px 10px 2px;
   }
 
   .mobile-agenda__segments {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-    padding: 3px;
+    gap: 3px;
+    padding: 2px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--bg) 70%, transparent);
     border: 1px solid var(--line);
@@ -1664,9 +1670,9 @@ body.is-resizing * {
     background: transparent;
     color: var(--muted);
     font: inherit;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 600;
-    padding: 7px 4px;
+    padding: 6px 4px;
     cursor: pointer;
   }
 
@@ -1679,13 +1685,13 @@ body.is-resizing * {
   .mobile-agenda__dots {
     display: flex;
     justify-content: center;
-    gap: 6px;
-    padding-bottom: 2px;
+    gap: 5px;
+    padding-bottom: 1px;
   }
 
   .mobile-agenda__dot {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     padding: 0;
     border: 0;
     border-radius: 50%;
@@ -1699,10 +1705,11 @@ body.is-resizing * {
   }
 
   .mobile-agenda__pager {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     display: flex;
     align-items: stretch;
     min-height: 0;
+    max-height: min(34dvh, 280px);
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -1729,7 +1736,7 @@ body.is-resizing * {
     overflow-y: auto;
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    padding: 0 8px 8px;
+    padding: 0 6px 6px;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
   }
@@ -1747,14 +1754,14 @@ body.is-resizing * {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px 6px;
+    gap: 6px;
+    padding: 8px 10px 4px;
     flex-wrap: wrap;
   }
 
   .mobile-lists__title {
     margin: 0;
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1823,10 +1830,10 @@ body.is-resizing * {
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 0 10px 14px;
+    padding: 0 8px 8px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 7px;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
@@ -1877,8 +1884,7 @@ body.is-resizing * {
   }
 
   .board--native .card__today-meta--pager {
-    padding: 0 4px 6px;
-    justify-content: flex-end;
+    display: none;
   }
 
   .board--native .mobile-lists .card__body,
@@ -1911,7 +1917,7 @@ body.is-resizing * {
   /* Delete sits on the title line; tag (when shown) wraps underneath. */
   .task__title-line {
     width: 100%;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .task__title-line .task__actions {
@@ -1932,28 +1938,28 @@ body.is-resizing * {
   }
 
   .card__head {
-    gap: 6px;
-    padding: 8px 8px 6px 6px;
+    gap: 4px;
+    padding: 6px 6px 4px 4px;
   }
 
   .board--native .card__head {
-    padding: 10px 12px 8px;
+    padding: 8px 10px 6px;
   }
 
   .card__toggle h2 {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
   }
 
   .board--native .card__toggle h2 {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
   }
 
   .card__body {
-    padding: 3px 5px 2px;
+    padding: 2px 4px 2px;
   }
 
   .board--native .card__body {
-    padding: 4px 8px 4px;
+    padding: 2px 6px 2px;
   }
 
   .card__scroll {
@@ -1969,59 +1975,62 @@ body.is-resizing * {
   }
 
   .card__empty {
-    padding: 14px 8px;
-    font-size: 0.78rem;
+    padding: 10px 6px;
+    font-size: 0.74rem;
   }
 
   .task-stack {
-    gap: 3px;
-  }
-
-  .task-stack--compact {
     gap: 2px;
   }
 
+  .task-stack--compact {
+    gap: 1px;
+  }
+
   .task {
-    padding: 4px 5px;
+    padding: 3px 5px;
     border-radius: 8px;
   }
 
   .task--compact {
-    padding: 3px 5px;
+    padding: 2px 4px;
     min-height: 0;
   }
 
+  /* Checkbox + time + title: one vertically centered line. */
   .task__row {
-    gap: 4px;
-    align-items: flex-start;
+    gap: 5px;
+    align-items: center;
   }
 
-  /* Title wins width; tag + delete sit compactly under the title. */
   .task__cluster {
     flex-direction: column;
     align-items: stretch;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .task__title-line {
     width: 100%;
     gap: 4px;
+    align-items: center;
   }
 
   .task__meta {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 3px;
     padding-left: 0;
   }
 
   .task__drag {
     /* Match card handle: tiny hit area + long-press activation (see App sensors). */
     width: 14px;
-    height: 20px;
+    height: 18px;
     opacity: 0.65;
-    margin-top: 1px;
+    margin-top: 0;
   }
 
   .task__drag-icon {
@@ -2030,20 +2039,25 @@ body.is-resizing * {
   }
 
   .task__check {
-    flex-basis: 18px;
-    width: 18px;
-    height: 18px;
-    margin-top: 1px;
+    flex-basis: 17px;
+    width: 17px;
+    height: 17px;
+    margin-top: 0;
     border-radius: 5px;
   }
 
-  /* Fixed-width time column so agenda titles share one x-start */
+  /* Time pill hugs content; hide entirely when the task has no time. */
   .task__time-wrap {
-    flex: 0 0 2.35rem;
-    width: 2.35rem;
-    max-width: 2.35rem;
-    margin-top: 1px;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 3.2rem;
+    margin-top: 0;
     overflow: visible;
+    align-self: center;
+  }
+
+  .task__time-wrap.is-empty {
+    display: none;
   }
 
   .task__time-pill {
@@ -2051,20 +2065,20 @@ body.is-resizing * {
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    width: 100%;
+    width: auto;
     min-width: 0;
     max-width: none;
     min-height: 18px;
-    padding: 0 2px;
+    padding: 0 4px;
     border: 1px solid var(--line);
     border-radius: 4px;
     background: color-mix(in srgb, var(--bg) 55%, transparent);
     color: var(--muted);
     font: inherit;
-    font-size: 0.52rem;
+    font-size: 0.58rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.045em;
+    letter-spacing: -0.03em;
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;
@@ -2091,12 +2105,22 @@ body.is-resizing * {
   .task__main {
     flex: 1 1 auto;
     min-width: 0;
-    width: 100%;
+    width: auto;
   }
 
   .task__text {
-    font-size: 0.8rem;
-    line-height: 1.22;
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+
+  /* Overdue: no text badge — warm row tint only. */
+  .badge--overdue {
+    display: none;
+  }
+
+  .task.is-overdue {
+    background: color-mix(in srgb, var(--danger) 14%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--danger) 28%, transparent);
   }
 
   /* Full tag under the title — no ellipsis clipping against the title. */
@@ -2108,9 +2132,9 @@ body.is-resizing * {
   }
 
   .list-tag__btn {
-    min-height: 22px;
-    padding: 2px 6px;
-    font-size: 0.58rem;
+    min-height: 20px;
+    padding: 1px 5px;
+    font-size: 0.56rem;
     white-space: nowrap;
   }
 
@@ -2119,47 +2143,48 @@ body.is-resizing * {
   }
 
   .task__link {
-    flex: 0 0 28px;
-    width: 28px;
-    height: 28px;
+    flex: 0 0 26px;
+    width: 26px;
+    height: 26px;
   }
 
   .task__link svg {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
   }
 
   .ghost {
-    min-width: 26px;
-    min-height: 26px;
-    padding: 3px;
-    font-size: 0.68rem;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
+    font-size: 0.66rem;
   }
 
   .add-row {
     width: calc(100% - 8px);
-    margin: 2px 4px 6px;
-    padding: 8px 10px;
-    font-size: 0.8rem;
+    margin: 2px 4px 4px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
   }
 
+  /* Flush to the bottom edge; only home-indicator inset below the shell. */
   .capture {
     position: sticky;
     bottom: 0;
     flex: 0 0 auto;
     flex-shrink: 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 12px env(safe-area-inset-bottom, 0px);
   }
 
   .os--keyboard-open .capture {
-    padding-bottom: 10px;
+    padding-bottom: 0;
   }
 
   /* Focused + unfocused share the same shell metrics — no padding/gap drift. */
   .capture__shell,
   .capture.is-focused .capture__shell {
-    padding: 12px 12px 12px 14px;
-    gap: 10px;
+    padding: 10px 10px 10px 12px;
+    gap: 8px;
   }
 
   /* 16px prevents iOS Safari zoom-on-focus (which shifts text to the right). */

@@ -201,7 +201,7 @@ export function TaskRow({
             />
           )}
 
-          {/* Title wins the row; tag can wrap under. Delete stays inline with title. */}
+          {/* Title wins the row; optional tag wraps under. Delete stays inline. */}
           <div className="task__cluster">
             <div className="task__title-line">
               {showNew && (
@@ -232,6 +232,7 @@ export function TaskRow({
                   {displayText ? (
                     <HighlightedText text={displayText} query={query} />
                   ) : null}
+                  {/* OVERDUE text badge is desktop-only; mobile uses row tint. */}
                   {task.overdue && !task.completed && (
                     <span className="badge badge--overdue">OVERDUE</span>
                   )}
@@ -343,7 +344,7 @@ function TimeChip({
   }
 
   return (
-    <div className="task__time-wrap">
+    <div className={`task__time-wrap${value ? '' : ' is-empty'}`}>
       <button
         type="button"
         className="task__time-pill"
