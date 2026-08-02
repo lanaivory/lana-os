@@ -6,9 +6,10 @@ const SWEEP_MS = 5 * 60 * 1000
 /**
  * Nudge the server to send any commitment reminders that have come due.
  *
- * The scheduled job is what fires reminders while the app is closed; this only
- * covers the gap between runs on a deployment without a fast cron. The endpoint
- * marks each reminder sent, so calling it twice sends nothing twice.
+ * This is the timely path: Vercel's Hobby plan only allows a daily cron, so the
+ * scheduled run is a once-a-day backstop and the app sweeps whenever it is open
+ * or comes back to the foreground. The endpoint marks each reminder as it
+ * sends, so calling it twice sends nothing twice.
  */
 export function useReminderSweep(enabled: boolean): void {
   useEffect(() => {

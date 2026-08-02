@@ -4,8 +4,9 @@ import { runDueReminders } from '../server/reminders.js'
 /**
  * GET|POST /api/reminders — send commitment reminders that have come due.
  *
- * Idempotent: each reminder is marked sent as it goes out, so the scheduled
- * job and the app can both call this without anyone hearing it twice.
+ * Idempotent: each reminder is marked sent as it goes out, so the daily cron
+ * and the app's foreground sweep can both call this without anyone hearing the
+ * same reminder twice.
  */
 export default async function handler(
   req: VercelRequest,
