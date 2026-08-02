@@ -10,7 +10,6 @@ import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe'
 type Props = {
   state: AppState
   day: PlaylistId
-  liveDate: string
   onDayChange: (day: PlaylistId) => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
@@ -25,7 +24,6 @@ type Props = {
 export function PlaylistScreen({
   state,
   day,
-  liveDate,
   onDayChange,
   onToggleTask,
   onOpenTask,
@@ -55,7 +53,7 @@ export function PlaylistScreen({
 
       <section className="mos-day" key={day} aria-label={PLAYLIST_META[day].name}>
         <p className="mos-day__caption">
-          {day === 'today' ? liveDate : PLAYLIST_META[day].hint}
+          {PLAYLIST_META[day].hint}
           {tasks.length > 0 && ` · ${done}/${tasks.length} done`}
         </p>
 

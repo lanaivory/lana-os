@@ -12,10 +12,12 @@ import {
   mobileListOrder,
   searchTasks,
   taskLocation,
+  type TaskLocation,
 } from '../lib/mobileSelectors'
 import type { MobileTab } from '../lib/mobileTabs'
 import { canMoveInOrder, moveInOrder, type MoveDirection } from '../lib/reorder'
-import type { PlaylistId } from '../lib/types'
+import type { AppState, PlaylistId } from '../lib/types'
+import { PLAYLIST_META } from '../lib/types'
 import { CaptureBar } from './components/CaptureBar'
 import { ConfirmSheet } from './components/ConfirmSheet'
 import { ListSheet } from './components/ListSheet'
@@ -42,7 +44,25 @@ type PendingDelete =
   | { kind: 'task'; id: string; label: string }
   | { kind: 'list'; id: string; label: string; taskCount: number }
 
+/**
+ * A task to bring on screen. A notification deep-link may change tabs to do
+ * it; a fresh capture may not — being thrown out of the tab you were reading
+ * is worse than a one-line note saying where the thought landed.
+ */
+type RevealRequest = { id: string; navigate: boolean }
+
 const CLOCK_TICK_MS = 30_000
+const TOAST_MS = 2600
+
+/** "Added to Errands" — where a captured thought landed, when it landed off-screen. */
+function destinationLabel(state: AppState, location: TaskLocation | null): string {
+  if (!location) return 'Captured'
+  if (location.kind === 'agenda') {
+    return `Added to ${PLAYLIST_META[location.day].name}`
+  }
+  const list = state.lists.find((l) => l.id === location.listId)
+  return list ? `Added to ${list.name}` : 'Captured'
+}
 /** How long a push deep-link waits for the SMS webhook's task to sync in. */
 const FOCUS_ATTEMPTS = 10
 const FOCUS_INTERVAL_MS = 500
@@ -80,9 +100,16 @@ export function MobileApp({ store }: { store: LanaStore }) {
   const [trashOpen, setTrashOpen] = useState(false)
   const [newListOpen, setNewListOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
-  const [revealTaskId, setRevealTaskId] = useState<string | null>(null)
+  const [reveal, setReveal] = useState<RevealRequest | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [focusTaskId, setFocusTaskId] = useState<string | null>(readFocusTaskId)
   const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    if (!toast) return
+    const id = window.setTimeout(() => setToast(null), TOAST_MS)
+    return () => window.clearTimeout(id)
+  }, [toast])
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), CLOCK_TICK_MS)
@@ -150,16 +177,28 @@ export function MobileApp({ store }: { store: LanaStore }) {
     }
   }, [listDetailId, state.lists])
 
-  // Capture and push deep-links point at a task: open the tab that shows it,
-  // then bring it on screen and flash it.
+  // Bring a captured or deep-linked task on screen and flash it.
   useEffect(() => {
-    if (!revealTaskId) return
-    if (!state.tasks[revealTaskId]) {
-      setRevealTaskId(null)
+    if (!reveal) return
+    if (!state.tasks[reveal.id]) {
+      setReveal(null)
       return
     }
 
-    const location = taskLocation(state, revealTaskId)
+    const location = taskLocation(state, reveal.id)
+    const onScreen =
+      location?.kind === 'agenda'
+        ? tab === 'playlist' && playlistDay === location.day
+        : location?.kind === 'list'
+          ? tab === 'lists' && listDetailId === location.listId
+          : false
+
+    if (!onScreen && !reveal.navigate) {
+      setToast(destinationLabel(state, location))
+      setReveal(null)
+      return
+    }
+
     if (location?.kind === 'agenda') {
       if (tab !== 'playlist') {
         setTab('playlist')
@@ -185,24 +224,16 @@ export function MobileApp({ store }: { store: LanaStore }) {
     let timer = 0
     const tryReveal = () => {
       attempts += 1
-      if (revealTask(rootRef.current, revealTaskId)) {
-        setRevealTaskId(null)
+      if (revealTask(rootRef.current, reveal.id)) {
+        setReveal(null)
         return
       }
       if (attempts < 12) timer = window.setTimeout(tryReveal, 70)
-      else setRevealTaskId(null)
+      else setReveal(null)
     }
     timer = window.setTimeout(tryReveal, 50)
     return () => window.clearTimeout(timer)
-  }, [
-    revealTaskId,
-    state,
-    tab,
-    playlistDay,
-    listDetailId,
-    setTab,
-    setPlaylistDay,
-  ])
+  }, [reveal, state, tab, playlistDay, listDetailId, setTab, setPlaylistDay])
 
   // Notification deep-link: /?focus=<taskId>, plus the service worker fallback.
   useEffect(() => {
@@ -245,7 +276,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
     if (state.tasks[focusTaskId]) {
       clearFocusFromUrl()
       setQuery('')
-      setRevealTaskId(focusTaskId)
+      setReveal({ id: focusTaskId, navigate: true })
       setFocusTaskId(null)
       return
     }
@@ -284,7 +315,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
       const created = store.capture(raw)
       if (created.length === 0) return
       setQuery('')
-      setRevealTaskId(created[0])
+      setReveal({ id: created[0], navigate: false })
     },
     [store],
   )
@@ -409,7 +440,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
     </button>
   )
 
-  const captureVisible = tab === 'playlist' || tab === 'lists'
+  const captureVisible = tab !== 'settings'
   const openToday = agendaOpenCount(state, 'today')
   const openLists = overviews.reduce((sum, o) => sum + o.open, 0)
 
@@ -436,7 +467,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
           <PlaylistScreen
             state={state}
             day={playlistDay}
-            liveDate={liveDate}
             onDayChange={setPlaylistDay}
             onToggleTask={store.toggleComplete}
             onOpenTask={setOpenTaskId}
@@ -548,6 +578,12 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onCheckTexts={() => void checkNow()}
           />
         </>
+      )}
+
+      {toast && (
+        <p className="mos-toast" role="status">
+          {toast}
+        </p>
       )}
 
       {captureVisible && <CaptureBar onCapture={onCapture} />}
