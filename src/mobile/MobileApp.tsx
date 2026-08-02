@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import type { LanaStore } from '../hooks/useLanaStore'
 import { useTwilioInbox } from '../hooks/useTwilioInbox'
 import { findPlaylistContaining } from '../lib/board'
+import { upcomingCommitments, weekCommitments } from '../lib/commitments'
 import { clearFocusFromUrl, readFocusTaskId } from '../lib/focusTask'
 import { accentColor } from '../lib/mobilePrefs'
 import {
-  agendaOpenCount,
+  dayOpenCount,
   listOverviews,
   listSection,
   mobileListOrder,
@@ -51,7 +52,7 @@ const CLOCK_TICK_MS = 30_000
 const FOCUS_ATTEMPTS = 10
 const FOCUS_INTERVAL_MS = 500
 
-type ToastState = { message: string; undo: () => void }
+type ToastState = { message: string; token: number; undo: () => void }
 
 /**
  * Four tabs over one shared store: Playlist (the plan), Lists (where tasks
@@ -345,16 +346,23 @@ export function MobileApp({ store }: { store: LanaStore }) {
     [store],
   )
 
-  /** Completing and deleting both stay reversible for a few seconds. */
+  const toastToken = useRef(0)
+  const showToast = useCallback((message: string, undo: () => void) => {
+    toastToken.current += 1
+    setToast({ message, token: toastToken.current, undo })
+  }, [])
+  const dismissToast = useCallback(() => setToast(null), [])
+
+  /** Completing, deleting, and clearing all stay reversible for a few seconds. */
   const toggleTask = useCallback(
     (taskId: string) => {
       const task = stateRef.current.tasks[taskId]
       store.toggleComplete(taskId)
       if (task && !task.completed) {
-        setToast({ message: `Done · ${task.text}`, undo: store.undo })
+        showToast(`Done · ${task.text}`, store.undo)
       }
     },
-    [store],
+    [store, showToast],
   )
 
   const deleteTask = useCallback(
@@ -363,9 +371,21 @@ export function MobileApp({ store }: { store: LanaStore }) {
       if (!task) return
       setOpenTaskId(null)
       store.deleteTask(taskId)
-      setToast({ message: `Deleted · ${task.text}`, undo: store.undo })
+      showToast(`Deleted · ${task.text}`, store.undo)
     },
-    [store],
+    [store, showToast],
+  )
+
+  const clearCompletedTasks = useCallback(
+    (taskIds: string[]) => {
+      if (taskIds.length === 0) return
+      store.clearCompletedTasks(taskIds)
+      showToast(
+        `Cleared ${taskIds.length} completed`,
+        store.undo,
+      )
+    },
+    [store, showToast],
   )
 
   const requestDeleteList = useCallback((listId: string) => {
@@ -393,6 +413,18 @@ export function MobileApp({ store }: { store: LanaStore }) {
     [state.tasks],
   )
 
+  /** The Calendar header says what is committed, not what time it is. */
+  const agendaSummary = useMemo(() => {
+    const week = prefs.agendaView === 'week'
+    const open = (
+      week
+        ? weekCommitments(state, todayKey)
+        : upcomingCommitments(state, todayKey)
+    ).filter((commitment) => !commitment.done).length
+    if (open === 0) return week ? 'Nothing this week' : 'Nothing further out'
+    return `${open} ${week ? 'this week' : 'upcoming'}`
+  }, [state, todayKey, prefs.agendaView])
+
   const saveCommitment = useCallback(
     (draft: CommitmentDraft) => {
       const editingId = commitmentSheet?.id ?? null
@@ -415,9 +447,16 @@ export function MobileApp({ store }: { store: LanaStore }) {
   )
 
   const captureVisible = tab === 'playlist' || tab === 'lists'
-  const openToday = agendaOpenCount(state, 'today')
+  const openToday = dayOpenCount(state, 'today', todayKey)
   const openLists = overviews.reduce((sum, o) => sum + o.open, 0)
   const rootStyle = { '--accent': accentColor(prefs.accent) } as CSSProperties
+  const rootClass = [
+    'mos',
+    `theme-${state.theme}`,
+    captureVisible ? 'has-capture' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   if (!prefs.onboarded) {
     return (
@@ -431,7 +470,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
   }
 
   return (
-    <div ref={rootRef} className={`mos theme-${state.theme}`} style={rootStyle}>
+    <div ref={rootRef} className={rootClass} style={rootStyle}>
       {tab === 'playlist' && (
         <>
           <ScreenHeader
@@ -453,7 +492,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
           <PlaylistScreen
             state={state}
             day={playlistDay}
-            liveDate={liveDate}
             todayKey={todayKey}
             nowCard={nowCard}
             completedOpen={completedOpen}
@@ -464,7 +502,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onToggleCommitment={store.toggleCommitmentDone}
             onOpenCommitment={(id) => setCommitmentSheet({ id })}
             onToggleCompletedOpen={() => setCompletedOpen((open) => !open)}
-            onClearCompleted={store.clearCompletedTasks}
+            onClearCompleted={clearCompletedTasks}
             onPlanFromLists={() => setPlanDay(playlistDay)}
           />
         </>
@@ -498,7 +536,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onOpenSort={() => setSortOpen(true)}
             onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
-            onAddTask={store.addTaskToList}
           />
         </>
       )}
@@ -551,7 +588,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
         <>
           <ScreenHeader
             title="Calendar"
-            subtitle={liveClock}
+            subtitle={agendaSummary}
             actions={
               <button
                 type="button"
@@ -628,12 +665,25 @@ export function MobileApp({ store }: { store: LanaStore }) {
         </>
       )}
 
-      {captureVisible && <CaptureBar onCapture={onCapture} />}
+      {captureVisible &&
+        (detailSection ? (
+          <CaptureBar
+            key={detailSection.list.id}
+            placeholder={`Add to ${detailSection.list.name}`}
+            stayFocused
+            onCapture={(text) =>
+              store.addTaskToList(detailSection.list.id, text)
+            }
+          />
+        ) : (
+          <CaptureBar key="capture" onCapture={onCapture} />
+        ))}
 
       <Toast
         message={toast?.message ?? null}
+        token={toast?.token ?? 0}
         onAction={() => toast?.undo()}
-        onDismiss={() => setToast(null)}
+        onDismiss={dismissToast}
       />
 
       <TabBar tab={tab} badges={{ playlist: openToday }} onSelect={selectTab} />

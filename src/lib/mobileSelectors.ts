@@ -4,6 +4,7 @@ import {
   orderedListTasks,
   plannedTaskIds,
 } from './board'
+import { commitmentsForDay } from './commitments'
 import { sortTasksForListMode, type ListSortMode } from './listSort'
 import type { AppState, ContextList, PlaylistId, Task } from './types'
 
@@ -166,7 +167,23 @@ export function taskLocation(
   return day ? { kind: 'agenda', day } : { kind: 'list', listId: task.listId }
 }
 
-/** Open (incomplete) task count for a day, used by the agenda tab badges. */
+/** Open (incomplete) task count for a day. */
 export function agendaOpenCount(state: AppState, day: PlaylistId): number {
   return agendaTasks(state, day).filter((task) => !task.completed).length
+}
+
+/**
+ * Everything still to do on a planning day — its tasks and the commitments
+ * that have pulled themselves into it. This is what the day actually renders,
+ * so it is what the day tabs and the Playlist badge count.
+ */
+export function dayOpenCount(
+  state: AppState,
+  day: PlaylistId,
+  todayKey: string,
+): number {
+  const commitments = commitmentsForDay(state, day, todayKey).filter(
+    (commitment) => !commitment.done,
+  ).length
+  return agendaOpenCount(state, day) + commitments
 }

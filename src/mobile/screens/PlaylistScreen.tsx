@@ -15,7 +15,6 @@ import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe'
 type Props = {
   state: AppState
   day: PlaylistId
-  liveDate: string
   todayKey: string
   nowCard: NowCardValue
   completedOpen: boolean
@@ -37,7 +36,6 @@ type Props = {
 export function PlaylistScreen({
   state,
   day,
-  liveDate,
   todayKey,
   nowCard,
   completedOpen,
@@ -66,11 +64,22 @@ export function PlaylistScreen({
   const done = tasks.filter((task) => task.completed)
   const commitments = commitmentsForDay(state, day, todayKey)
 
+  // The header already carries today's date, so the caption only adds progress.
+  const total = tasks.length + commitments.length
+  const finished = done.length + commitments.filter((c) => c.done).length
+  const caption = [
+    day === 'today' ? '' : PLAYLIST_META[day].hint,
+    total > 0 ? `${finished}/${total} done` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <div className="mos-scroll" {...swipe}>
       <DayTabs
         state={state}
         day={day}
+        todayKey={todayKey}
         label="Planning day"
         onChange={onDayChange}
       />
@@ -85,10 +94,7 @@ export function PlaylistScreen({
           />
         )}
 
-        <p className="mos-day__caption">
-          {day === 'today' ? liveDate : PLAYLIST_META[day].hint}
-          {tasks.length > 0 && ` · ${done.length}/${tasks.length} done`}
-        </p>
+        {caption && <p className="mos-day__caption">{caption}</p>}
 
         {commitments.length > 0 && (
           <ul className="mos-tasks">

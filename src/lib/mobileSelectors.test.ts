@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   agendaOpenCount,
   agendaTasks,
+  dayOpenCount,
   listOverviews,
   listSection,
   listSections,
@@ -9,7 +10,12 @@ import {
   searchTasks,
   taskLocation,
 } from './mobileSelectors'
-import { createEmptyState, type AppState, type Task } from './types'
+import {
+  createEmptyState,
+  type AppState,
+  type Commitment,
+  type Task,
+} from './types'
 
 function task(
   partial: Partial<Task> & Pick<Task, 'id' | 'text' | 'listId'>,
@@ -21,6 +27,22 @@ function task(
     time: null,
     overdue: false,
     isNew: false,
+    ...partial,
+  }
+}
+
+function commitment(
+  partial: Partial<Commitment> & Pick<Commitment, 'id' | 'date'>,
+): Commitment {
+  return {
+    title: 'Something',
+    time: null,
+    reminderMinutesBefore: null,
+    reminderAt: null,
+    reminderSentAt: null,
+    listId: null,
+    done: false,
+    createdAt: 1,
     ...partial,
   }
 }
@@ -82,6 +104,41 @@ describe('agendaTasks', () => {
     state.playlists.today = ['a', 'b']
     expect(agendaOpenCount(state, 'today')).toBe(1)
     expect(agendaOpenCount(state, 'week')).toBe(0)
+  })
+})
+
+describe('dayOpenCount', () => {
+  const today = '2026-03-10'
+
+  function withDayContent(): AppState {
+    const state = stateWith([
+      task({ id: 'a', text: 'A', listId: 'errands' }),
+      task({ id: 'b', text: 'B', listId: 'errands', completed: true }),
+    ])
+    state.playlists.today = ['a', 'b']
+    state.commitments = [
+      commitment({ id: 'c1', date: today }),
+      commitment({ id: 'c2', date: today, done: true }),
+      commitment({ id: 'c3', date: '2026-03-12' }),
+    ]
+    return state
+  }
+
+  it('counts the day’s open tasks and its open commitments together', () => {
+    expect(dayOpenCount(withDayContent(), 'today', today)).toBe(2)
+  })
+
+  it('follows a commitment into the day it has pulled itself to', () => {
+    const state = withDayContent()
+    // 'c3' is two days out: inside the week, not yet on today.
+    expect(dayOpenCount(state, 'week', today)).toBe(2)
+    expect(dayOpenCount(state, 'tomorrow', today)).toBe(0)
+  })
+
+  it('still counts an overdue commitment on today', () => {
+    const state = createEmptyState()
+    state.commitments = [commitment({ id: 'late', date: '2026-03-01' })]
+    expect(dayOpenCount(state, 'today', today)).toBe(1)
   })
 })
 

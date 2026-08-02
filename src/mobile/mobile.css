@@ -27,6 +27,15 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
+  /*
+   * The bottom chrome, declared once. The bars below take their height from
+   * these, and anything floating (the toast) stacks on top of `--chrome-h`
+   * rather than guessing at an offset.
+   */
+  --tabbar-h: calc(62px + var(--safe-bottom));
+  --capture-h: 60px;
+  --chrome-h: var(--tabbar-h);
+
   position: fixed;
   inset: 0;
   display: flex;
@@ -40,6 +49,15 @@
     radial-gradient(620px 340px at 94% -4%, rgba(126, 184, 162, 0.08), transparent 52%),
     var(--bg);
   -webkit-tap-highlight-color: transparent;
+}
+
+.mos.has-capture {
+  --chrome-h: calc(var(--tabbar-h) + var(--capture-h));
+}
+
+/* With the keyboard up the tab bar is hidden, so it takes up no room. */
+.mos.is-keyboard-open {
+  --tabbar-h: 0px;
 }
 
 .mos.theme-light {
@@ -456,6 +474,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 38px;
+}
+
+.mos-toolbar__note {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .mos-field {
@@ -567,6 +591,16 @@
   border-radius: 9px;
   background: transparent;
   color: var(--accent);
+}
+
+/* Unpinned rows still show the control, just quietly. */
+.mos-index__pin.is-off {
+  color: var(--faint);
+  opacity: 0.5;
+}
+
+.mos-index__pin.is-off:active {
+  opacity: 1;
 }
 
 .mos-chevron {
@@ -783,7 +817,7 @@
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(78px + var(--safe-bottom));
+  bottom: calc(var(--chrome-h) + 10px);
   z-index: 55;
   display: flex;
   align-items: center;
@@ -900,60 +934,15 @@
   color: var(--muted);
 }
 
-/* ------------------------------------------------------------- composer */
-
-.mos-composer__open {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  align-self: flex-start;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--faint);
-  font-size: 0.84rem;
-}
-
-.mos-composer {
-  display: flex;
-  gap: 7px;
-}
-
-.mos-composer__input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
-  outline: none;
-}
-
-.mos-composer__submit {
-  flex: 0 0 auto;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 26%, transparent);
-  color: var(--accent);
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.mos-composer__submit:disabled {
-  opacity: 0.4;
-}
-
 /* --------------------------------------------------------------- capture */
 
 .mos-capture {
   flex: 0 0 auto;
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 9px 12px;
+  height: var(--capture-h);
+  padding: 0 12px;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 94%, transparent);
   backdrop-filter: blur(14px);
@@ -994,6 +983,7 @@
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  height: var(--tabbar-h);
   padding: 6px 6px calc(6px + var(--safe-bottom));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 96%, transparent);

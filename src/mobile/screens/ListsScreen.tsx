@@ -8,7 +8,7 @@ import type { ContextList } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
 import { TaskRow } from '../components/TaskRow'
 import { TriageBanner } from '../components/TriageBanner'
-import { ArrowIcon, ChevronIcon, PinIcon, SearchIcon } from '../components/icons'
+import { ArrowIcon, PinIcon, SearchIcon } from '../components/icons'
 import { usePinGesture } from '../hooks/usePinGesture'
 
 type Props = {
@@ -75,41 +75,47 @@ function ListIndexRow({
             {overview.planned > 0 && ` · ${overview.planned} planned`}
           </span>
         </span>
-        {!reordering && <ChevronIcon open={false} />}
       </button>
 
-      {list.pinned && !reordering && (
+      {reordering ? (
+        <>
+          {list.pinned && (
+            <span className="mos-index__pin is-marker" aria-label="Pinned">
+              <PinIcon filled />
+            </span>
+          )}
+          <span className="mos-index__reorder">
+            <button
+              type="button"
+              className="mos-icon-btn"
+              disabled={first}
+              aria-label={`Move ${list.name} up`}
+              onClick={() => onMove(-1)}
+            >
+              <ArrowIcon direction="up" />
+            </button>
+            <button
+              type="button"
+              className="mos-icon-btn"
+              disabled={last}
+              aria-label={`Move ${list.name} down`}
+              onClick={() => onMove(1)}
+            >
+              <ArrowIcon direction="down" />
+            </button>
+          </span>
+        </>
+      ) : (
+        /* Always present: a pin you cannot see is a pin nobody finds. */
         <button
           type="button"
-          className="mos-index__pin"
-          aria-label={`Unpin ${list.name}`}
+          className={`mos-index__pin${list.pinned ? '' : ' is-off'}`}
+          aria-pressed={list.pinned}
+          aria-label={`${list.pinned ? 'Unpin' : 'Pin'} ${list.name}`}
           onClick={onTogglePin}
         >
-          <PinIcon filled />
+          <PinIcon filled={list.pinned} />
         </button>
-      )}
-
-      {reordering && (
-        <span className="mos-index__reorder">
-          <button
-            type="button"
-            className="mos-icon-btn"
-            disabled={first}
-            aria-label={`Move ${list.name} up`}
-            onClick={() => onMove(-1)}
-          >
-            <ArrowIcon direction="up" />
-          </button>
-          <button
-            type="button"
-            className="mos-icon-btn"
-            disabled={last}
-            aria-label={`Move ${list.name} down`}
-            onClick={() => onMove(1)}
-          >
-            <ArrowIcon direction="down" />
-          </button>
-        </span>
       )}
     </li>
   )
@@ -162,6 +168,32 @@ export function ListsScreen({
     </section>
   )
 
+  /*
+   * Reordering moves a list within one flat board order, so it is shown as one
+   * flat order. Splitting Pinned off here would make a row leap between
+   * sections on a single tap of Move up.
+   */
+  if (reordering) {
+    return (
+      <div className="mos-scroll">
+        <div className="mos-toolbar">
+          <p className="mos-day__caption mos-toolbar__note">
+            Move lists with the arrows
+          </p>
+          <button
+            type="button"
+            className="mos-chip is-active"
+            aria-pressed
+            onClick={() => onReorderingChange(false)}
+          >
+            Done
+          </button>
+        </div>
+        {renderList(overviews)}
+      </div>
+    )
+  }
+
   return (
     <div className="mos-scroll">
       <div className="mos-toolbar">
@@ -178,11 +210,10 @@ export function ListsScreen({
 
         <button
           type="button"
-          className={`mos-chip${reordering ? ' is-active' : ''}`}
-          aria-pressed={reordering}
-          onClick={() => onReorderingChange(!reordering)}
+          className="mos-chip"
+          onClick={() => onReorderingChange(true)}
         >
-          {reordering ? 'Done' : 'Reorder'}
+          Reorder
         </button>
       </div>
 
@@ -209,15 +240,13 @@ export function ListsScreen({
         </section>
       ) : (
         <>
-          {!reordering && (
-            <TriageBanner
-              cards={triage}
-              total={triageTotal}
-              onFile={onTriageFile}
-              onKeep={onTriageKeep}
-              onAddToToday={onTriageToday}
-            />
-          )}
+          <TriageBanner
+            cards={triage}
+            total={triageTotal}
+            onFile={onTriageFile}
+            onKeep={onTriageKeep}
+            onAddToToday={onTriageToday}
+          />
 
           {pinned.length > 0 && renderList(pinned, 'Pinned')}
           {renderList(rest, pinned.length > 0 ? 'All lists' : undefined)}
