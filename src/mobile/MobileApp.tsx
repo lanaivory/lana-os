@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { LanaStore } from '../hooks/useLanaStore'
 import { useTwilioInbox } from '../hooks/useTwilioInbox'
-import { findPlaylistContaining, orderedListTasks } from '../lib/board'
-import { daySchedule } from '../lib/calendar'
+import { findPlaylistContaining } from '../lib/board'
 import { clearFocusFromUrl, readFocusTaskId } from '../lib/focusTask'
+import { accentColor } from '../lib/mobilePrefs'
 import {
   agendaOpenCount,
-  agendaTasks,
   listOverviews,
   listSection,
   mobileListOrder,
@@ -14,22 +13,31 @@ import {
   taskLocation,
 } from '../lib/mobileSelectors'
 import type { MobileTab } from '../lib/mobileTabs'
-import { canMoveInOrder, moveInOrder, type MoveDirection } from '../lib/reorder'
+import { nowCard as pickNowCard } from '../lib/nowCard'
+import { recentlyUsedListIds } from '../lib/listSuggest'
+import { moveInOrder, type MoveDirection } from '../lib/reorder'
+import { localDateKey } from '../lib/storage'
+import { triageCards, triageCount } from '../lib/triage'
 import type { PlaylistId } from '../lib/types'
 import { CaptureBar } from './components/CaptureBar'
+import { CommitmentSheet, type CommitmentDraft } from './components/CommitmentSheet'
 import { ConfirmSheet } from './components/ConfirmSheet'
 import { ListSheet } from './components/ListSheet'
+import { Onboarding } from './components/Onboarding'
 import { PlanSheet } from './components/PlanSheet'
 import { PromptSheet } from './components/PromptSheet'
-import { ScheduleSheet } from './components/ScheduleSheet'
 import { ScreenHeader } from './components/ScreenHeader'
 import { SortSheet } from './components/SortSheet'
 import { TabBar } from './components/TabBar'
 import { TaskSheet } from './components/TaskSheet'
+import { Toast } from './components/Toast'
 import { TrashSheet } from './components/TrashSheet'
 import { MoreIcon, PlusIcon, UndoIcon } from './components/icons'
+import { useCalendarFeed } from './hooks/useCalendarFeed'
+import { useCaptureNumber } from './hooks/useCaptureNumber'
 import { useKeyboardInset } from './hooks/useKeyboardInset'
 import { useMobilePrefs } from './hooks/useMobilePrefs'
+import { useReminderSweep } from './hooks/useReminderSweep'
 import { revealTask } from './revealTask'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { ListDetailScreen } from './screens/ListDetailScreen'
@@ -38,18 +46,16 @@ import { PlaylistScreen } from './screens/PlaylistScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import './mobile.css'
 
-type PendingDelete =
-  | { kind: 'task'; id: string; label: string }
-  | { kind: 'list'; id: string; label: string; taskCount: number }
-
 const CLOCK_TICK_MS = 30_000
 /** How long a push deep-link waits for the SMS webhook's task to sync in. */
 const FOCUS_ATTEMPTS = 10
 const FOCUS_INTERVAL_MS = 500
 
+type ToastState = { message: string; undo: () => void }
+
 /**
  * Four tabs over one shared store: Playlist (the plan), Lists (where tasks
- * live), Calendar (the clock), Settings. The shell owns navigation, the
+ * live), Calendar (what is dated), Settings. The shell owns navigation, the
  * store glue, and every sheet; each tab screen only renders its own content.
  */
 export function MobileApp({ store }: { store: LanaStore }) {
@@ -67,7 +73,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
   } = useTwilioInbox(store.capture, getState)
 
   const [prefs, updatePrefs] = useMobilePrefs()
-  const { tab, playlistDay, calendarDay, listSort } = prefs
+  const { tab, playlistDay, listSort } = prefs
 
   const [query, setQuery] = useState('')
   const [listDetailId, setListDetailId] = useState<string | null>(null)
@@ -76,18 +82,33 @@ export function MobileApp({ store }: { store: LanaStore }) {
   const [listSheetOpen, setListSheetOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [planDay, setPlanDay] = useState<PlaylistId | null>(null)
-  const [scheduleHour, setScheduleHour] = useState<number | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
   const [newListOpen, setNewListOpen] = useState(false)
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [pendingListDelete, setPendingListDelete] = useState<{
+    id: string
+    label: string
+    taskCount: number
+  } | null>(null)
   const [revealTaskId, setRevealTaskId] = useState<string | null>(null)
   const [focusTaskId, setFocusTaskId] = useState<string | null>(readFocusTaskId)
   const [now, setNow] = useState(() => new Date())
+  const [shuffleIndex, setShuffleIndex] = useState(0)
+  const [completedOpen, setCompletedOpen] = useState(false)
+  const [commitmentSheet, setCommitmentSheet] = useState<{
+    id: string | null
+  } | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), CLOCK_TICK_MS)
     return () => window.clearInterval(id)
   }, [])
+
+  const captureNumber = useCaptureNumber(prefs.captureNumber)
+  const feed = useCalendarFeed(prefs.calendarFeedUrl)
+  useReminderSweep(prefs.onboarded)
+
+  const todayKey = useMemo(() => localDateKey(now), [now])
 
   const liveClock = useMemo(
     () =>
@@ -115,10 +136,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
     (day: PlaylistId) => updatePrefs((prev) => ({ ...prev, playlistDay: day })),
     [updatePrefs],
   )
-  const setCalendarDay = useCallback(
-    (day: PlaylistId) => updatePrefs((prev) => ({ ...prev, calendarDay: day })),
-    [updatePrefs],
-  )
 
   /** Tapping the tab you are already on pops back to the top of it. */
   const selectTab = useCallback(
@@ -134,6 +151,9 @@ export function MobileApp({ store }: { store: LanaStore }) {
 
   const overviews = useMemo(() => listOverviews(state), [state])
   const results = useMemo(() => searchTasks(state, query), [state, query])
+  const recentListIds = useMemo(() => recentlyUsedListIds(state), [state])
+  const triage = useMemo(() => triageCards(state), [state])
+  const triageTotal = useMemo(() => triageCount(state), [state])
   const detailSection = useMemo(
     () =>
       listDetailId ? listSection(state, listDetailId, { sort: listSort }) : null,
@@ -142,6 +162,17 @@ export function MobileApp({ store }: { store: LanaStore }) {
   const detailOverview = listDetailId
     ? (overviews.find((o) => o.list.id === listDetailId) ?? null)
     : null
+
+  const nowCard = useMemo(
+    () =>
+      pickNowCard(state, {
+        now,
+        leadMinutes: prefs.nowLeadMinutes,
+        shuffleSource: prefs.shuffleSource,
+        shuffleIndex,
+      }),
+    [state, now, prefs.nowLeadMinutes, prefs.shuffleSource, shuffleIndex],
+  )
 
   // A list can vanish from under the detail screen (deleted here or on desktop).
   useEffect(() => {
@@ -284,32 +315,13 @@ export function MobileApp({ store }: { store: LanaStore }) {
       const created = store.capture(raw)
       if (created.length === 0) return
       setQuery('')
-      setRevealTaskId(created[0])
+      setOpenTaskId(created[0])
     },
     [store],
   )
 
   const openTask = state.tasks[openTaskId ?? ''] ?? null
   const openTaskLocation = openTaskId ? taskLocation(state, openTaskId) : null
-
-  const openTaskSiblings = useMemo(() => {
-    if (!openTaskLocation) return { visible: [] as string[], canReorder: false }
-    if (openTaskLocation.kind === 'agenda') {
-      return {
-        visible: agendaTasks(state, openTaskLocation.day).map((t) => t.id),
-        canReorder: !(
-          openTaskLocation.day === 'today' && state.sortTodayByTime
-        ),
-      }
-    }
-    const section = listSection(state, openTaskLocation.listId, {
-      sort: listSort,
-    })
-    return {
-      visible: section?.tasks.map((t) => t.id) ?? [],
-      canReorder: listSort === 'custom',
-    }
-  }, [state, openTaskLocation, listSort])
 
   const planTask = useCallback(
     (taskId: string, day: PlaylistId | null) => {
@@ -324,31 +336,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
     [store, setPlaylistDay],
   )
 
-  const moveTask = useCallback(
-    (taskId: string, direction: MoveDirection) => {
-      const current = stateRef.current
-      const location = taskLocation(current, taskId)
-      if (!location) return
-
-      if (location.kind === 'agenda') {
-        const full = current.playlists[location.day]
-        const visible = agendaTasks(current, location.day).map((t) => t.id)
-        const next = moveInOrder(full, visible, taskId, direction)
-        if (next !== full) store.reorderPlaylist(location.day, next)
-        return
-      }
-
-      const full = orderedListTasks(current, location.listId)
-      const visible =
-        listSection(current, location.listId, {
-          sort: listSort,
-        })?.tasks.map((t) => t.id) ?? []
-      const next = moveInOrder(full, visible, taskId, direction)
-      if (next !== full) store.reorderListTasks(location.listId, next)
-    },
-    [store, listSort],
-  )
-
   const moveList = useCallback(
     (listId: string, direction: MoveDirection) => {
       const order = mobileListOrder(stateRef.current)
@@ -358,20 +345,35 @@ export function MobileApp({ store }: { store: LanaStore }) {
     [store],
   )
 
-  const requestDeleteTask = useCallback((taskId: string) => {
-    const task = stateRef.current.tasks[taskId]
-    if (!task) return
-    setOpenTaskId(null)
-    setPendingDelete({ kind: 'task', id: taskId, label: task.text })
-  }, [])
+  /** Completing and deleting both stay reversible for a few seconds. */
+  const toggleTask = useCallback(
+    (taskId: string) => {
+      const task = stateRef.current.tasks[taskId]
+      store.toggleComplete(taskId)
+      if (task && !task.completed) {
+        setToast({ message: `Done · ${task.text}`, undo: store.undo })
+      }
+    },
+    [store],
+  )
+
+  const deleteTask = useCallback(
+    (taskId: string) => {
+      const task = stateRef.current.tasks[taskId]
+      if (!task) return
+      setOpenTaskId(null)
+      store.deleteTask(taskId)
+      setToast({ message: `Deleted · ${task.text}`, undo: store.undo })
+    },
+    [store],
+  )
 
   const requestDeleteList = useCallback((listId: string) => {
     const current = stateRef.current
     const list = current.lists.find((l) => l.id === listId)
     if (!list) return
     setListSheetOpen(false)
-    setPendingDelete({
-      kind: 'list',
+    setPendingListDelete({
       id: listId,
       label: list.name,
       taskCount: Object.values(current.tasks).filter((t) => t.listId === listId)
@@ -391,10 +393,13 @@ export function MobileApp({ store }: { store: LanaStore }) {
     [state.tasks],
   )
 
-  const scheduleCandidates = useMemo(
-    () =>
-      scheduleHour === null ? [] : daySchedule(state, calendarDay).untimed,
-    [scheduleHour, state, calendarDay],
+  const saveCommitment = useCallback(
+    (draft: CommitmentDraft) => {
+      const editingId = commitmentSheet?.id ?? null
+      if (editingId) store.updateCommitment(editingId, draft)
+      else store.addCommitment(draft)
+    },
+    [store, commitmentSheet],
   )
 
   const undoButton = (
@@ -412,9 +417,21 @@ export function MobileApp({ store }: { store: LanaStore }) {
   const captureVisible = tab === 'playlist' || tab === 'lists'
   const openToday = agendaOpenCount(state, 'today')
   const openLists = overviews.reduce((sum, o) => sum + o.open, 0)
+  const rootStyle = { '--accent': accentColor(prefs.accent) } as CSSProperties
+
+  if (!prefs.onboarded) {
+    return (
+      <div ref={rootRef} className={`mos theme-${state.theme}`} style={rootStyle}>
+        <Onboarding
+          captureNumber={captureNumber}
+          onDone={() => updatePrefs((prev) => ({ ...prev, onboarded: true }))}
+        />
+      </div>
+    )
+  }
 
   return (
-    <div ref={rootRef} className={`mos theme-${state.theme}`}>
+    <div ref={rootRef} className={`mos theme-${state.theme}`} style={rootStyle}>
       {tab === 'playlist' && (
         <>
           <ScreenHeader
@@ -437,9 +454,17 @@ export function MobileApp({ store }: { store: LanaStore }) {
             state={state}
             day={playlistDay}
             liveDate={liveDate}
+            todayKey={todayKey}
+            nowCard={nowCard}
+            completedOpen={completedOpen}
             onDayChange={setPlaylistDay}
-            onToggleTask={store.toggleComplete}
+            onShuffle={() => setShuffleIndex((index) => index + 1)}
+            onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
+            onToggleCommitment={store.toggleCommitmentDone}
+            onOpenCommitment={(id) => setCommitmentSheet({ id })}
+            onToggleCompletedOpen={() => setCompletedOpen((open) => !open)}
+            onClearCompleted={store.clearCompletedTasks}
             onPlanFromLists={() => setPlanDay(playlistDay)}
           />
         </>
@@ -471,7 +496,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
             sort={listSort}
             plannedCount={detailOverview?.planned ?? 0}
             onOpenSort={() => setSortOpen(true)}
-            onToggleTask={store.toggleComplete}
+            onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
             onAddTask={store.addTaskToList}
           />
@@ -503,28 +528,54 @@ export function MobileApp({ store }: { store: LanaStore }) {
             query={query}
             results={results}
             reordering={reordering}
+            triage={triage}
+            triageTotal={triageTotal}
             onQueryChange={setQuery}
             onReorderingChange={setReordering}
             onOpenList={setListDetailId}
             onMoveList={moveList}
-            onToggleTask={store.toggleComplete}
+            onTogglePin={store.toggleListPinned}
+            onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
+            onTriageFile={store.setTaskList}
+            onTriageKeep={store.keepTaskList}
+            onTriageToday={(taskId) => {
+              store.addToPlaylist(taskId, 'today')
+              store.keepTaskList(taskId)
+            }}
           />
         </>
       )}
 
       {tab === 'calendar' && (
         <>
-          <ScreenHeader title="Calendar" subtitle={liveClock} />
+          <ScreenHeader
+            title="Calendar"
+            subtitle={liveClock}
+            actions={
+              <button
+                type="button"
+                className="mos-icon-btn"
+                aria-label="New commitment"
+                onClick={() => setCommitmentSheet({ id: null })}
+              >
+                <PlusIcon />
+              </button>
+            }
+          />
           <CalendarScreen
             state={state}
-            day={calendarDay}
-            now={now}
-            onDayChange={setCalendarDay}
-            onToggleTask={store.toggleComplete}
-            onOpenTask={setOpenTaskId}
-            onScheduleAt={setScheduleHour}
-            onPlanFromLists={() => setPlanDay(calendarDay)}
+            todayKey={todayKey}
+            view={prefs.agendaView}
+            feedEvents={feed.events}
+            feedStatus={feed.status}
+            onViewChange={(agendaView) =>
+              updatePrefs((prev) => ({ ...prev, agendaView }))
+            }
+            onToggleCommitment={store.toggleCommitmentDone}
+            onOpenCommitment={(id) => setCommitmentSheet({ id })}
+            onAddCommitment={() => setCommitmentSheet({ id: null })}
+            onConnectCalendar={() => setTab('settings')}
           />
         </>
       )}
@@ -539,18 +590,51 @@ export function MobileApp({ store }: { store: LanaStore }) {
             trashCount={state.trash.length}
             textCaptureConnected={textCaptureConnected}
             textCaptureChecking={textCaptureChecking}
+            captureNumber={captureNumber}
+            lists={state.lists}
+            unsureCapture={state.unsureCapture}
+            unsureListId={state.unsureListId}
+            prefs={prefs}
             onToggleTheme={store.toggleTheme}
             onSortTodayByTimeChange={store.setSortTodayByTime}
+            onCaptureNumberChange={(captureNumberOverride) =>
+              updatePrefs((prev) => ({
+                ...prev,
+                captureNumber: captureNumberOverride,
+              }))
+            }
+            onUnsureCaptureChange={store.setUnsureCapture}
+            onAccentChange={(accent) =>
+              updatePrefs((prev) => ({ ...prev, accent }))
+            }
+            onNowLeadChange={(nowLeadMinutes) =>
+              updatePrefs((prev) => ({ ...prev, nowLeadMinutes }))
+            }
+            onShuffleSourceChange={(shuffleSource) =>
+              updatePrefs((prev) => ({ ...prev, shuffleSource }))
+            }
+            onCalendarFeedChange={(calendarFeedUrl) =>
+              updatePrefs((prev) => ({ ...prev, calendarFeedUrl }))
+            }
             onNewList={() => setNewListOpen(true)}
             onReorderLists={startReorderLists}
             onClearCompleted={store.clearCompleted}
             onOpenTrash={() => setTrashOpen(true)}
             onCheckTexts={() => void checkNow()}
+            onReplayOnboarding={() =>
+              updatePrefs((prev) => ({ ...prev, onboarded: false }))
+            }
           />
         </>
       )}
 
       {captureVisible && <CaptureBar onCapture={onCapture} />}
+
+      <Toast
+        message={toast?.message ?? null}
+        onAction={() => toast?.undo()}
+        onDismiss={() => setToast(null)}
+      />
 
       <TabBar tab={tab} badges={{ playlist: openToday }} onSelect={selectTab} />
 
@@ -558,25 +642,26 @@ export function MobileApp({ store }: { store: LanaStore }) {
         task={openTask}
         lists={state.lists}
         location={openTaskLocation}
-        canReorder={openTaskSiblings.canReorder}
-        canMoveUp={
-          openTaskId
-            ? canMoveInOrder(openTaskSiblings.visible, openTaskId, -1)
-            : false
-        }
-        canMoveDown={
-          openTaskId
-            ? canMoveInOrder(openTaskSiblings.visible, openTaskId, 1)
-            : false
-        }
+        recentListIds={recentListIds}
         onClose={() => setOpenTaskId(null)}
         onRename={store.setTaskText}
         onPlan={planTask}
         onTimeChange={store.setTaskTime}
         onListChange={store.setTaskList}
-        onMove={moveTask}
-        onToggleComplete={store.toggleComplete}
-        onDelete={requestDeleteTask}
+        onDelete={deleteTask}
+      />
+
+      <CommitmentSheet
+        open={commitmentSheet !== null}
+        commitment={
+          state.commitments.find((c) => c.id === commitmentSheet?.id) ?? null
+        }
+        lists={state.lists}
+        defaultDate={todayKey}
+        pushEnabled={typeof Notification !== 'undefined' && Notification.permission === 'granted'}
+        onClose={() => setCommitmentSheet(null)}
+        onSave={saveCommitment}
+        onDelete={store.deleteCommitment}
       />
 
       <ListSheet
@@ -586,6 +671,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
         }
         onClose={() => setListSheetOpen(false)}
         onRename={store.renameList}
+        onTogglePin={store.toggleListPinned}
         onStartReorder={startReorderLists}
         onDelete={requestDeleteList}
       />
@@ -596,16 +682,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
         day={planDay ?? playlistDay}
         onClose={() => setPlanDay(null)}
         onPlan={store.addToPlaylist}
-      />
-
-      <ScheduleSheet
-        hour={scheduleHour}
-        tasks={scheduleCandidates}
-        onClose={() => setScheduleHour(null)}
-        onSchedule={(taskId, time) => {
-          store.setTaskTime(taskId, time)
-          setScheduleHour(null)
-        }}
       />
 
       <SortSheet
@@ -640,22 +716,19 @@ export function MobileApp({ store }: { store: LanaStore }) {
       />
 
       <ConfirmSheet
-        open={pendingDelete !== null}
-        title={pendingDelete?.kind === 'list' ? 'Delete list?' : 'Delete task?'}
+        open={pendingListDelete !== null}
+        title="Delete list?"
         message={
-          pendingDelete?.kind === 'list'
-            ? `“${pendingDelete.label}” and its ${pendingDelete.taskCount} task${pendingDelete.taskCount === 1 ? '' : 's'} move to Recently deleted, where you can restore them for 24 hours.`
-            : pendingDelete
-              ? `“${pendingDelete.label}” moves to Recently deleted, where you can restore it for 24 hours.`
-              : ''
+          pendingListDelete
+            ? `“${pendingListDelete.label}” and its ${pendingListDelete.taskCount} task${pendingListDelete.taskCount === 1 ? '' : 's'} move to Recently deleted, where you can restore them for 24 hours.`
+            : ''
         }
         confirmLabel="Delete"
-        onCancel={() => setPendingDelete(null)}
+        onCancel={() => setPendingListDelete(null)}
         onConfirm={() => {
-          if (!pendingDelete) return
-          if (pendingDelete.kind === 'task') store.deleteTask(pendingDelete.id)
-          else store.deleteList(pendingDelete.id)
-          setPendingDelete(null)
+          if (!pendingListDelete) return
+          store.deleteList(pendingListDelete.id)
+          setPendingListDelete(null)
         }}
       />
     </div>

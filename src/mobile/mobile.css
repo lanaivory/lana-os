@@ -296,14 +296,24 @@
   gap: 6px;
 }
 
+/*
+ * One row = checkbox, an optional boxed time on the left, the title, and the
+ * owning list named plainly at the end. No pills.
+ */
 .mos-task {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 9px 10px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
+}
+
+.mos-task.is-readonly {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
 }
 
 .mos-task.is-overdue {
@@ -352,18 +362,39 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 2px 0;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
   border: 0;
   background: transparent;
   text-align: left;
 }
 
 .mos-task__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.94rem;
   line-height: 1.32;
   overflow-wrap: anywhere;
+}
+
+.mos-time-box {
+  flex: 0 0 auto;
+  min-width: 52px;
+  padding: 3px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.mos-task.is-overdue .mos-time-box {
+  border-color: color-mix(in srgb, var(--overdue) 55%, var(--line));
+  color: var(--overdue);
 }
 
 .mos-task.is-done .mos-task__title {
@@ -378,41 +409,32 @@
   color: inherit;
 }
 
-.mos-task__meta {
+.mos-task__trailing {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-}
-
-.mos-task__time {
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
-  color: var(--accent);
-  font-size: 0.71rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  max-width: 45%;
 }
 
 .mos-task__day {
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent-2) 34%, var(--line));
-  color: var(--accent-2);
-  font-size: 0.7rem;
-  font-weight: 600;
+  color: var(--faint);
+  font-size: 0.74rem;
+  white-space: nowrap;
 }
 
-.mos-task__tag {
-  max-width: 60vw;
+.mos-task__bell {
+  display: inline-grid;
+  place-items: center;
+  color: var(--faint);
+}
+
+/* Plain text, list colour, no chrome. */
+.mos-task__list {
+  min-width: 0;
   overflow: hidden;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tag, var(--muted)) 40%, transparent);
-  background: color-mix(in srgb, var(--tag, var(--muted)) 14%, transparent);
-  color: color-mix(in srgb, var(--tag, var(--muted)) 75%, var(--text));
-  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--tag, var(--muted)) 78%, var(--text));
+  font-size: 0.74rem;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -534,6 +556,19 @@
   gap: 2px;
 }
 
+/* Pinned lists get a marker, not a coloured background. */
+.mos-index__pin {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--accent);
+}
+
 .mos-chevron {
   flex: 0 0 auto;
   color: var(--faint);
@@ -557,94 +592,241 @@
   gap: 8px;
 }
 
+/* ------------------------------------------------------------- now card */
+
+.mos-now {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: var(--radius);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 70%
+    ),
+    var(--surface);
+}
+
+.mos-now__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+
+.mos-now__label {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mos-now__task {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.mos-now__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.mos-now__done {
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+  color: #17110a;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.mos-now__done:active {
+  background: color-mix(in srgb, var(--accent) 70%, #000);
+}
+
+/* ------------------------------------------------------------- completed */
+
+.mos-completed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mos-completed__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mos-completed__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.mos-completed__clear {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.mos-completed__clear:active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 /* --------------------------------------------------------- calendar tab */
 
-.mos-tray {
+.mos-agenda__day {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mos-agenda__label {
+  margin: 0 2px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mos-linkish {
+  align-self: flex-start;
+  padding: 6px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------- triage */
+
+.mos-triage {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.mos-triage__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.mos-triage__card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.mos-timeline {
-  display: flex;
-  flex-direction: column;
+.mos-triage__text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
-.mos-slot {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  padding: 4px 0;
-  border-top: 1px solid var(--line);
-}
-
-.mos-slot:last-child {
-  border-bottom: 1px solid var(--line);
-}
-
-.mos-slot__hour {
-  flex: 0 0 46px;
-  padding-top: 6px;
-  color: var(--faint);
-  font-size: 0.72rem;
+.mos-triage__today {
+  align-self: flex-start;
+  min-height: 34px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 
-.mos-slot__body {
-  position: relative;
+/* ----------------------------------------------------------------- toast */
+
+.mos-toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(78px + var(--safe-bottom));
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px);
+  animation: mos-toast-in 160ms ease-out;
+}
+
+@keyframes mos-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mos-toast {
+    animation: none;
+  }
+}
+
+.mos-toast__text {
   flex: 1 1 auto;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 34px;
-}
-
-.mos-slot__now {
-  position: absolute;
-  left: -6px;
-  right: 0;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-.mos-slot__now::before {
-  content: '';
-  position: absolute;
-  left: -3px;
-  top: -3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.mos-slot__add {
-  flex: 1 1 auto;
-  display: grid;
-  place-items: center;
-  min-height: 34px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: transparent;
-}
-
-.mos-slot__add:active {
-  background: var(--surface-2);
   color: var(--muted);
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mos-slot.is-empty:hover .mos-slot__add {
-  color: var(--faint);
+.mos-toast__action {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------- groups and rows */
@@ -996,10 +1178,28 @@
 
 /* ------------------------------------------------------ sheet form parts */
 
+.mos-field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mos-field-block__label {
+  color: var(--faint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
 .mos-segments {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+}
+
+.mos-segments--three {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .mos-segment {
@@ -1019,7 +1219,6 @@
 }
 
 .mos-time-row,
-.mos-order-row,
 .mos-confirm,
 .mos-prompt {
   display: flex;
@@ -1027,8 +1226,7 @@
   gap: 8px;
 }
 
-.mos-confirm > *,
-.mos-order-row > * {
+.mos-confirm > * {
   flex: 1 1 0;
 }
 
@@ -1047,24 +1245,98 @@
   align-items: stretch;
 }
 
-.mos-tag-grid {
+.mos-chiprow {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.mos-tag {
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tag, var(--muted)) 34%, transparent);
-  background: color-mix(in srgb, var(--tag, var(--muted)) 10%, transparent);
+/*
+ * The two or three lists worth offering. The full set lives behind "More…",
+ * so this row never becomes a wall.
+ */
+.mos-listchip {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--tag, var(--line-strong)) 36%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.mos-listchip.is-active {
+  border-color: color-mix(in srgb, var(--tag, var(--accent)) 70%, transparent);
+  background: color-mix(in srgb, var(--tag, var(--accent)) 18%, transparent);
+  color: var(--text);
+}
+
+.mos-listchip--more {
+  border-style: dashed;
+  color: var(--faint);
+}
+
+.mos-quiet-danger {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--danger) 85%, var(--muted));
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.mos-inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.mos-inline-field input {
+  width: 86px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  outline: none;
+}
+
+.mos-inline-field--wide input {
+  width: 100%;
+}
+
+.mos-inline-field--wide {
+  align-self: stretch;
+}
+
+.mos-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
-.mos-tag.is-active {
-  background: color-mix(in srgb, var(--tag, var(--muted)) 30%, transparent);
+.mos-swatch span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tag, var(--accent));
+}
+
+.mos-swatch.is-active {
+  border-color: color-mix(in srgb, var(--tag, var(--accent)) 70%, transparent);
   color: var(--text);
 }
 
@@ -1104,6 +1376,12 @@
 
 .mos-btn:disabled {
   opacity: 0.45;
+}
+
+a.mos-btn {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
 }
 
 .mos-btn--accent {
@@ -1226,3 +1504,41 @@
 .mos-trash__actions > * {
   flex: 1 1 0;
 }
+
+/* ------------------------------------------------------------ onboarding */
+
+.mos-onboard {
+  gap: 18px;
+  padding-top: calc(20px + var(--safe-top));
+}
+
+.mos-onboard__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mos-onboard__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.mos-onboard__step {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.mos-onboard__step-title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+

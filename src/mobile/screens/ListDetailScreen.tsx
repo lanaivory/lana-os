@@ -64,7 +64,7 @@ export function ListDetailScreen({
               key={task.id}
               task={task}
               lists={lists}
-              query=""
+              contextListId={list.id}
               onToggle={onToggleTask}
               onOpen={onOpenTask}
             />
