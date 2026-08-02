@@ -1,4 +1,4 @@
-import { classifyTask } from '../src/lib/classifier.js'
+import { classifyTask, isUnsureText } from '../src/lib/classifier.js'
 import { splitCaptureText } from '../src/lib/parseCapture.js'
 import { smsTaskId } from '../src/lib/smsTaskIds.js'
 import { routeTimingWords } from '../src/lib/timing.js'
@@ -129,7 +129,10 @@ function applySmsCapture(
   const createdIds: string[] = []
 
   pieces.forEach((text, index) => {
-    const { listId: preferred } = classifyTask(text)
+    const unsure = isUnsureText(text)
+    const preferred = unsure
+      ? (prev.unsureListId ?? classifyTask(text).listId)
+      : classifyTask(text).listId
     const listId = resolveActiveListId(prev, preferred)
     const { playlistId } = routeTimingWords(text)
     const id = smsTaskId(messageSid, index)
@@ -144,6 +147,8 @@ function applySmsCapture(
       time: null,
       overdue: false,
       isNew: true,
+      // Matches the client pipeline: an unplaceable text waits in triage.
+      ...(unsure && prev.unsureCapture !== 'file' ? { needsTriage: true } : {}),
     }
     tasks[id] = task
     createdIds.push(id)

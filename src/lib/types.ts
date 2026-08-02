@@ -14,6 +14,11 @@ export type Task = {
   overdue: boolean
   /** Highlight tasks that just arrived via text capture */
   isNew: boolean
+  /**
+   * Set when capture could not confidently pick a list, so the task waits in
+   * the mobile triage banner instead of quietly landing in the fallback list.
+   */
+  needsTriage?: boolean
 }
 
 export type ContextList = {
@@ -22,7 +27,41 @@ export type ContextList = {
   collapsed: boolean
   /** Soft accent used for list tags */
   color: string
+  /** Pinned lists float to their own section at the top of the Lists tab. */
+  pinned?: boolean
 }
+
+/**
+ * A dated thing you have committed to: it has a day (and maybe a clock time),
+ * unlike a task, which only ever has a planning day and an optional time.
+ */
+export type Commitment = {
+  id: string
+  title: string
+  /** Local calendar date, `YYYY-MM-DD`. */
+  date: string
+  /** Optional `HH:MM`. */
+  time: string | null
+  /**
+   * Minutes before the commitment to fire a web push. `0` means at the time
+   * itself; `null` means no reminder.
+   */
+  reminderMinutesBefore: number | null
+  /**
+   * Absolute epoch ms the reminder is due, resolved on the device that created
+   * it. The server only compares numbers, so it never has to guess a timezone.
+   */
+  reminderAt: number | null
+  /** Epoch ms the reminder push went out, so it only ever fires once. */
+  reminderSentAt: number | null
+  /** Optional owning context list, used for the trailing list name on a row. */
+  listId: string | null
+  done: boolean
+  createdAt: number
+}
+
+/** What capture does with text the classifier cannot place. */
+export type UnsureCaptureMode = 'ask' | 'file'
 
 export type Playlists = {
   today: string[]
@@ -93,7 +132,16 @@ export type AppState = {
   listsVersion: number
   /** Soft-deleted tasks/lists retained for 24 hours. */
   trash: TrashEntry[]
+  /** Dated commitments shown on the Calendar tab. */
+  commitments: Commitment[]
+  /** Ask (triage banner) or auto-file unsure captures into `unsureListId`. */
+  unsureCapture: UnsureCaptureMode
+  /** Destination for unsure captures when `unsureCapture` is `file`. */
+  unsureListId: string
 }
+
+/** Where unsure captures land when the user has not chosen a list. */
+export const DEFAULT_UNSURE_LIST_ID = 'random'
 
 /** Bump when the seeded context-list set or ids change. */
 export const LISTS_VERSION = 2
@@ -170,5 +218,8 @@ export function createEmptyState(): AppState {
     listOrders: {},
     listsVersion: LISTS_VERSION,
     trash: [],
+    commitments: [],
+    unsureCapture: 'ask',
+    unsureListId: DEFAULT_UNSURE_LIST_ID,
   }
 }

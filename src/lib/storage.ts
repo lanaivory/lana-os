@@ -4,8 +4,10 @@ import { ensureBuiltinLists, migrateCanonicalLists } from './lists'
 import { trashedListIds } from './trash'
 import {
   createEmptyState,
+  DEFAULT_UNSURE_LIST_ID,
   LISTS_VERSION,
   type AppState,
+  type Commitment,
   type PlaylistId,
   type Task,
   type TrashEntry,
@@ -88,6 +90,12 @@ export function migrateState(state: Partial<AppState>): AppState {
     listOrders: state.listOrders ?? {},
     listsVersion: typeof state.listsVersion === 'number' ? state.listsVersion : 0,
     trash,
+    commitments: migrateCommitments(state.commitments),
+    unsureCapture: state.unsureCapture === 'file' ? 'file' : 'ask',
+    unsureListId:
+      typeof state.unsureListId === 'string' && state.unsureListId.trim()
+        ? state.unsureListId
+        : DEFAULT_UNSURE_LIST_ID,
   }
 
   return migrateCanonicalLists(base, {
@@ -100,6 +108,42 @@ function migrateBoolMap(raw: unknown): Record<string, boolean> {
   const out: Record<string, boolean> = {}
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof value === 'boolean') out[key] = value
+  }
+  return out
+}
+
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+/** Drop anything that is not a usable dated commitment. */
+function migrateCommitments(raw: unknown): Commitment[] {
+  if (!Array.isArray(raw)) return []
+  const out: Commitment[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const value = item as Record<string, unknown>
+    const id = typeof value.id === 'string' ? value.id : ''
+    const title = typeof value.title === 'string' ? value.title.trim() : ''
+    const date = typeof value.date === 'string' ? value.date : ''
+    if (!id || !title || !DATE_KEY_PATTERN.test(date)) continue
+    out.push({
+      id,
+      title,
+      date,
+      time: typeof value.time === 'string' && value.time ? value.time : null,
+      reminderMinutesBefore:
+        typeof value.reminderMinutesBefore === 'number' &&
+        Number.isFinite(value.reminderMinutesBefore)
+          ? Math.max(0, Math.round(value.reminderMinutesBefore))
+          : null,
+      reminderAt:
+        typeof value.reminderAt === 'number' ? value.reminderAt : null,
+      reminderSentAt:
+        typeof value.reminderSentAt === 'number' ? value.reminderSentAt : null,
+      listId: typeof value.listId === 'string' && value.listId ? value.listId : null,
+      done: Boolean(value.done),
+      createdAt:
+        typeof value.createdAt === 'number' ? value.createdAt : Date.now(),
+    })
   }
   return out
 }
@@ -143,6 +187,7 @@ function migrateTrash(raw: unknown): TrashEntry[] {
           name: list.name,
           collapsed: Boolean(list.collapsed),
           color: typeof list.color === 'string' ? list.color : '#8b919a',
+          pinned: Boolean(list.pinned),
         },
         tasks: tasksRaw.flatMap((row) => {
           if (!row || typeof row !== 'object') return []
@@ -181,6 +226,7 @@ type ContextListLike = {
   name?: string
   collapsed?: boolean
   color?: string
+  pinned?: boolean
 }
 
 function normalizePlaylistIds(raw: unknown): PlaylistId[] {
