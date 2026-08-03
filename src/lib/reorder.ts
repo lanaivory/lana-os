@@ -43,3 +43,42 @@ export function moveInOrder(
   next[toFull] = full[fromFull]
   return next
 }
+
+/**
+ * Drop `activeId` where `overId` sits, moving it only among the members of its
+ * own group and leaving everything else exactly where it was.
+ *
+ * Mobile shows pinned lists in their own section, but the stored order is one
+ * flat sequence shared with the desktop board. Reordering the visible sequence
+ * and writing that back would drag every pinned list to the front of the board.
+ * Instead the group's members are shuffled between the slots they already
+ * occupy, so a drag on one screen never rearranges the other.
+ */
+export function moveWithinGroup(
+  full: string[],
+  group: string[],
+  activeId: string,
+  overId: string,
+): string[] {
+  if (activeId === overId) return full
+  const inGroup = new Set(group)
+  if (!inGroup.has(activeId) || !inGroup.has(overId)) return full
+
+  const slots: number[] = []
+  full.forEach((id, index) => {
+    if (inGroup.has(id)) slots.push(index)
+  })
+
+  const members = slots.map((index) => full[index])
+  const from = members.indexOf(activeId)
+  const to = members.indexOf(overId)
+  if (from === -1 || to === -1) return full
+
+  members.splice(to, 0, ...members.splice(from, 1))
+
+  const next = [...full]
+  slots.forEach((slot, index) => {
+    next[slot] = members[index]
+  })
+  return next
+}

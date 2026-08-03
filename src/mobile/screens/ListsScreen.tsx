@@ -1,29 +1,46 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
+import {
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type {
   MobileListOverview,
   MobileSearchHit,
 } from '../../lib/mobileSelectors'
 import type { TriageCard } from '../../lib/triage'
-import type { ContextList } from '../../lib/types'
+import type { ContextList, Task } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
 import { TaskRow } from '../components/TaskRow'
 import { TriageBanner } from '../components/TriageBanner'
-import { ArrowIcon, PinIcon, SearchIcon } from '../components/icons'
+import { ChevronIcon, PinIcon, SearchIcon } from '../components/icons'
 import { usePinGesture } from '../hooks/usePinGesture'
+
+/** How many bullets an inline peek shows before it says how many are left. */
+const PEEK_LIMIT = 6
 
 type Props = {
   overviews: MobileListOverview[]
   lists: ContextList[]
   query: string
   results: MobileSearchHit[]
-  /** Reorder mode swaps the drill-in chevrons for up / down controls. */
-  reordering: boolean
   triage: TriageCard[]
   triageTotal: number
+  /** Unplanned tasks of a list, for the inline peek. */
+  tasksForList: (listId: string) => Task[]
   onQueryChange: (query: string) => void
-  onReorderingChange: (reordering: boolean) => void
   onOpenList: (listId: string) => void
-  onMoveList: (listId: string, direction: -1 | 1) => void
+  onReorder: (group: string[], activeId: string, overId: string) => void
   onTogglePin: (listId: string) => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
@@ -34,79 +51,66 @@ type Props = {
 
 function ListIndexRow({
   overview,
-  reordering,
-  first,
-  last,
+  expanded,
+  tasks,
+  onToggleExpanded,
   onOpen,
-  onMove,
   onTogglePin,
+  onOpenTask,
 }: {
   overview: MobileListOverview
-  reordering: boolean
-  first: boolean
-  last: boolean
+  expanded: boolean
+  tasks: Task[]
+  onToggleExpanded: () => void
   onOpen: () => void
-  onMove: (direction: -1 | 1) => void
   onTogglePin: () => void
+  onOpenTask: (taskId: string) => void
 }) {
   const { handlers, consumedTap } = usePinGesture(onTogglePin)
   const { list } = overview
+  const { listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: list.id })
+
+  const style = {
+    '--tag': list.color,
+    transform: CSS.Translate.toString(transform),
+    transition,
+  } as CSSProperties
+
+  const peek = tasks.slice(0, PEEK_LIMIT)
 
   return (
     <li
-      className="mos-index__item"
-      style={{ '--tag': list.color } as CSSProperties}
+      ref={setNodeRef}
+      className={`mos-index__item${isDragging ? ' is-dragging' : ''}${
+        expanded ? ' is-open' : ''
+      }`}
+      style={style}
+      {...listeners}
     >
-      <button
-        type="button"
-        className="mos-index__open"
-        disabled={reordering}
-        {...handlers}
-        onClick={() => {
-          if (consumedTap()) return
-          onOpen()
-        }}
-      >
-        <span className="mos-index__dot" aria-hidden />
-        <span className="mos-index__text">
-          <span className="mos-index__name">{list.name}</span>
-          <span className="mos-index__meta">
-            {overview.open === 0 ? 'All clear' : `${overview.open} open`}
-            {overview.planned > 0 && ` · ${overview.planned} planned`}
-          </span>
-        </span>
-      </button>
-
-      {reordering ? (
-        <>
-          {list.pinned && (
-            <span className="mos-index__pin is-marker" aria-label="Pinned">
-              <PinIcon filled />
+      <div className="mos-index__head">
+        <button
+          type="button"
+          className="mos-index__open"
+          aria-expanded={expanded}
+          {...handlers}
+          onClick={() => {
+            if (consumedTap()) return
+            onToggleExpanded()
+          }}
+        >
+          <span className="mos-index__dot" aria-hidden />
+          <span className="mos-index__text">
+            <span className="mos-index__name">{list.name}</span>
+            <span className="mos-index__meta">
+              {overview.open === 0 ? 'All clear' : `${overview.open} open`}
+              {overview.planned > 0 && ` · ${overview.planned} planned`}
             </span>
-          )}
-          <span className="mos-index__reorder">
-            <button
-              type="button"
-              className="mos-icon-btn"
-              disabled={first}
-              aria-label={`Move ${list.name} up`}
-              onClick={() => onMove(-1)}
-            >
-              <ArrowIcon direction="up" />
-            </button>
-            <button
-              type="button"
-              className="mos-icon-btn"
-              disabled={last}
-              aria-label={`Move ${list.name} down`}
-              onClick={() => onMove(1)}
-            >
-              <ArrowIcon direction="down" />
-            </button>
           </span>
-        </>
-      ) : (
-        /* Always present: a pin you cannot see is a pin nobody finds. */
+          <ChevronIcon open={expanded} />
+        </button>
+
+        {/* Always present: a pin you cannot see is a pin nobody finds. */}
         <button
           type="button"
           className={`mos-index__pin${list.pinned ? '' : ' is-off'}`}
@@ -116,27 +120,56 @@ function ListIndexRow({
         >
           <PinIcon filled={list.pinned} />
         </button>
+      </div>
+
+      {expanded && (
+        <div className="mos-peek">
+          {peek.length === 0 ? (
+            <p className="mos-peek__empty">Nothing here yet.</p>
+          ) : (
+            <ul className="mos-peek__list">
+              {peek.map((task) => (
+                <li key={task.id} className="mos-peek__item">
+                  <button
+                    type="button"
+                    className={`mos-peek__task${task.completed ? ' is-done' : ''}`}
+                    onClick={() => onOpenTask(task.id)}
+                  >
+                    <span className="mos-peek__bullet" aria-hidden />
+                    <span className="mos-peek__title">{task.text}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" className="mos-peek__open" onClick={onOpen}>
+            {tasks.length > peek.length
+              ? `Open ${list.name} · ${tasks.length - peek.length} more`
+              : `Open ${list.name}`}
+          </button>
+        </div>
       )}
     </li>
   )
 }
 
 /**
- * Index of every context list, pinned ones first. Typing searches across all
- * of them at once, including tasks already planned into a day.
+ * Index of every context list, pinned ones first. A tap opens the list where
+ * it stands; the full page is a step further in, for when you want to work in
+ * one. Hold a row to drag it into a new order — within its own section, since
+ * the stored order is shared with the desktop board.
  */
 export function ListsScreen({
   overviews,
   lists,
   query,
   results,
-  reordering,
   triage,
   triageTotal,
+  tasksForList,
   onQueryChange,
-  onReorderingChange,
   onOpenList,
-  onMoveList,
+  onReorder,
   onTogglePin,
   onToggleTask,
   onOpenTask,
@@ -144,78 +177,74 @@ export function ListsScreen({
   onTriageKeep,
   onTriageToday,
 }: Props) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const searching = query.trim().length > 0
   const pinned = overviews.filter((o) => o.list.pinned)
   const rest = overviews.filter((o) => !o.list.pinned)
 
-  const renderList = (group: MobileListOverview[], label?: string) => (
+  // Touch: hold before a drag begins, so a flick still scrolls the page.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 320, tolerance: 8 },
+    }),
+  )
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    const dragged = overviews.find((o) => o.list.id === active.id)
+    if (!dragged) return
+    const group = overviews
+      .filter((o) => o.list.pinned === dragged.list.pinned)
+      .map((o) => o.list.id)
+    onReorder(group, String(active.id), String(over.id))
+  }
+
+  const renderGroup = (group: MobileListOverview[], label?: string) => (
     <section className="mos-group" aria-label={label ?? 'Lists'}>
       {label && <h2 className="mos-group__title">{label}</h2>}
-      <ul className="mos-index">
-        {group.map((overview) => (
-          <ListIndexRow
-            key={overview.list.id}
-            overview={overview}
-            reordering={reordering}
-            first={overviews.indexOf(overview) === 0}
-            last={overviews.indexOf(overview) === overviews.length - 1}
-            onOpen={() => onOpenList(overview.list.id)}
-            onMove={(direction) => onMoveList(overview.list.id, direction)}
-            onTogglePin={() => onTogglePin(overview.list.id)}
-          />
-        ))}
-      </ul>
+      <SortableContext
+        items={group.map((o) => o.list.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <ul className="mos-index">
+          {group.map((overview) => (
+            <ListIndexRow
+              key={overview.list.id}
+              overview={overview}
+              expanded={expandedId === overview.list.id}
+              tasks={
+                expandedId === overview.list.id
+                  ? tasksForList(overview.list.id)
+                  : []
+              }
+              onToggleExpanded={() =>
+                setExpandedId((current) =>
+                  current === overview.list.id ? null : overview.list.id,
+                )
+              }
+              onOpen={() => onOpenList(overview.list.id)}
+              onTogglePin={() => onTogglePin(overview.list.id)}
+              onOpenTask={onOpenTask}
+            />
+          ))}
+        </ul>
+      </SortableContext>
     </section>
   )
 
-  /*
-   * Reordering moves a list within one flat board order, so it is shown as one
-   * flat order. Splitting Pinned off here would make a row leap between
-   * sections on a single tap of Move up.
-   */
-  if (reordering) {
-    return (
-      <div className="mos-scroll">
-        <div className="mos-toolbar">
-          <p className="mos-day__caption mos-toolbar__note">
-            Move lists with the arrows
-          </p>
-          <button
-            type="button"
-            className="mos-chip is-active"
-            aria-pressed
-            onClick={() => onReorderingChange(false)}
-          >
-            Done
-          </button>
-        </div>
-        {renderList(overviews)}
-      </div>
-    )
-  }
-
   return (
     <div className="mos-scroll">
-      <div className="mos-toolbar">
-        <label className="mos-field">
-          <SearchIcon />
-          <input
-            type="search"
-            value={query}
-            placeholder="Search every list"
-            aria-label="Search tasks"
-            onChange={(event) => onQueryChange(event.target.value)}
-          />
-        </label>
-
-        <button
-          type="button"
-          className="mos-chip"
-          onClick={() => onReorderingChange(true)}
-        >
-          Reorder
-        </button>
-      </div>
+      <label className="mos-field">
+        <SearchIcon />
+        <input
+          type="search"
+          value={query}
+          placeholder="Search every list"
+          aria-label="Search tasks"
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
+      </label>
 
       {searching ? (
         <section className="mos-results" aria-label="Search results">
@@ -248,8 +277,14 @@ export function ListsScreen({
             onAddToToday={onTriageToday}
           />
 
-          {pinned.length > 0 && renderList(pinned, 'Pinned')}
-          {renderList(rest, pinned.length > 0 ? 'All lists' : undefined)}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+          >
+            {pinned.length > 0 && renderGroup(pinned, 'Pinned')}
+            {renderGroup(rest, pinned.length > 0 ? 'All lists' : undefined)}
+          </DndContext>
         </>
       )}
     </div>
