@@ -74,7 +74,8 @@ type Props = {
   onShuffleSourceChange: (source: ShuffleSource) => void
   onCalendarFeedChange: (url: string) => void
   onNewList: () => void
-  onReorderLists: () => void
+  canUndo: boolean
+  onUndo: () => void
   onClearCompleted: () => void
   onOpenTrash: () => void
   onCheckTexts: () => void
@@ -102,7 +103,8 @@ export function SettingsScreen({
   onShuffleSourceChange,
   onCalendarFeedChange,
   onNewList,
-  onReorderLists,
+  canUndo,
+  onUndo,
   onClearCompleted,
   onOpenTrash,
   onCheckTexts,
@@ -236,12 +238,13 @@ export function SettingsScreen({
         </label>
       </Group>
 
-      <Group label="Lists">
+      <Group label="Lists" hint="Hold a row on the Lists tab to drag it into a new order.">
         <Row label="New list" onClick={onNewList} />
         <Row
-          label="Reorder lists"
-          hint="Opens the Lists tab in reorder mode"
-          onClick={onReorderLists}
+          label="Undo last change"
+          hint={canUndo ? 'Steps back one edit' : 'Nothing to undo'}
+          disabled={!canUndo}
+          onClick={onUndo}
         />
         <Row
           label="Clear completed"

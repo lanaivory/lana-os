@@ -40,6 +40,13 @@ export function CaptureBar({
     <form
       className="mos-capture"
       aria-label={placeholder}
+      // The bar is one target: a tap anywhere in it opens the keyboard, rather
+      // than only the field's own text box.
+      onPointerDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        inputRef.current?.focus()
+      }}
       onSubmit={(event) => {
         event.preventDefault()
         submit()

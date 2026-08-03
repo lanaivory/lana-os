@@ -4,6 +4,11 @@ type Props = {
   message: string | null
   /** Changes per toast, so two identical messages still restart the countdown. */
   token?: number
+  /**
+   * `bar` carries an action. `pill` is a bare confirmation, for when the thing
+   * you just did landed somewhere you cannot see.
+   */
+  variant?: 'bar' | 'pill'
   actionLabel?: string
   durationMs?: number
   onAction: () => void
@@ -14,6 +19,7 @@ type Props = {
 export function Toast({
   message,
   token = 0,
+  variant = 'bar',
   actionLabel = 'Undo',
   durationMs = 4500,
   onAction,
@@ -31,6 +37,14 @@ export function Toast({
   }, [message, token, durationMs])
 
   if (!message) return null
+
+  if (variant === 'pill') {
+    return (
+      <div className="mos-toast mos-toast--pill" role="status">
+        <span className="mos-toast__text">{message}</span>
+      </div>
+    )
+  }
 
   return (
     <div className="mos-toast" role="status">
