@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { daysUntil } from '../../lib/commitments'
-import { formatPlanTime } from '../../lib/timeFormat'
 import type { Commitment, ContextList } from '../../lib/types'
+import { TimeBox } from './TimeBox'
 import { BellIcon, CheckIcon } from './icons'
 
 type Props = {
@@ -37,21 +37,10 @@ export function CommitmentRow({
   onToggle,
   onOpen,
 }: Props) {
-  const time = formatPlanTime(commitment.time)
   const list = lists.find((l) => l.id === commitment.listId)
-  const overdue =
-    !commitment.done && (daysUntil(commitment.date, todayKey) ?? 0) < 0
 
   return (
-    <li
-      className={[
-        'mos-task',
-        commitment.done ? 'is-done' : '',
-        overdue ? 'is-overdue' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <li className={`mos-task${commitment.done ? ' is-done' : ''}`}>
       <button
         type="button"
         className="mos-task__check"
@@ -62,7 +51,7 @@ export function CommitmentRow({
         <CheckIcon />
       </button>
 
-      {time && <span className="mos-time-box">{time}</span>}
+      <TimeBox time={commitment.time} />
 
       <button
         type="button"

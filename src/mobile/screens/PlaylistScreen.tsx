@@ -22,6 +22,7 @@ type Props = {
   onShuffle: () => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
+  onTimeChange: (taskId: string, time: string | null) => void
   onToggleCommitment: (id: string) => void
   onOpenCommitment: (id: string) => void
   onToggleCompletedOpen: () => void
@@ -43,6 +44,7 @@ export function PlaylistScreen({
   onShuffle,
   onToggleTask,
   onOpenTask,
+  onTimeChange,
   onToggleCommitment,
   onOpenCommitment,
   onToggleCompletedOpen,
@@ -60,7 +62,11 @@ export function PlaylistScreen({
   })
 
   const tasks = agendaTasks(state, day)
-  const open = tasks.filter((task) => !task.completed)
+  // Whatever the Now card is holding is not repeated in the queue beneath it.
+  const promotedId = day === 'today' ? (nowCard?.task.id ?? null) : null
+  const open = tasks.filter(
+    (task) => !task.completed && task.id !== promotedId,
+  )
   const done = tasks.filter((task) => task.completed)
   const commitments = commitmentsForDay(state, day, todayKey)
 
@@ -112,7 +118,7 @@ export function PlaylistScreen({
           </ul>
         )}
 
-        {open.length === 0 && commitments.length === 0 ? (
+        {open.length === 0 && commitments.length === 0 && !promotedId ? (
           <p className="mos-empty">
             Nothing planned yet. Pull a few tasks over from your lists.
           </p>
@@ -124,8 +130,10 @@ export function PlaylistScreen({
                   key={task.id}
                   task={task}
                   lists={state.lists}
+                  alwaysShowTime
                   onToggle={onToggleTask}
                   onOpen={onOpenTask}
+                  onTimeChange={onTimeChange}
                 />
               ))}
             </ul>
