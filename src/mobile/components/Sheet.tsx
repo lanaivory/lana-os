@@ -1,10 +1,13 @@
 import { useEffect, type ReactNode } from 'react'
+import { CloseIcon } from './icons'
 
 type Props = {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
+  /** Pinned under the body: the sheet's commit and destroy actions. */
+  footer?: ReactNode
   /** Secondary sheets stack above an already-open one. */
   layer?: 'base' | 'stacked'
 }
@@ -15,6 +18,7 @@ export function Sheet({
   title,
   onClose,
   children,
+  footer,
   layer = 'base',
 }: Props) {
   useEffect(() => {
@@ -51,10 +55,11 @@ export function Sheet({
             onClick={onClose}
             aria-label="Close"
           >
-            Done
+            <CloseIcon />
           </button>
         </header>
         <div className="mos-sheet__body">{children}</div>
+        {footer && <div className="mos-sheet__foot">{footer}</div>}
       </div>
     </div>
   )
