@@ -6,6 +6,7 @@ import type { ContextList, PlaylistId, Task } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
 import { ListPickerSheet } from './ListPickerSheet'
 import { Sheet } from './Sheet'
+import { TimeBox } from './TimeBox'
 
 type Props = {
   task: Task | null
@@ -28,9 +29,10 @@ const WHEN_LABELS: Record<PlaylistId, string> = {
 }
 
 /**
- * Capture and edit in one lean sheet: what it is, where it lives, when it
- * happens. Every control writes straight through, so closing is saving and
- * there is no Save button to hunt for.
+ * Edit in one lean sheet: the time boxed beside the title, where it lives,
+ * and when it happens. The sheet holds a draft — Save commits it, the X walks
+ * away — and it does not take the keyboard on open, because the text it is
+ * showing you is usually already right.
  */
 export function TaskSheet({
   task,
@@ -44,20 +46,28 @@ export function TaskSheet({
   onListChange,
   onDelete,
 }: Props) {
-  const [title, setTitle] = useState(task?.text ?? '')
+  const [title, setTitle] = useState('')
+  const [time, setTime] = useState<string | null>(null)
+  const [listId, setListId] = useState<string | null>(null)
+  const [day, setDay] = useState<PlaylistId | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+
   const taskId = task?.id ?? null
+  const openDay = location?.kind === 'agenda' ? location.day : null
 
-  useEffect(() => {
-    setTitle(task?.text ?? '')
-  }, [task?.id, task?.text])
+  // Seeded per task, not per keystroke from the store: a cloud poll landing
+  // mid-edit must not overwrite what is being typed.
+  const seed = useRef({ task, openDay })
+  seed.current = { task, openDay }
 
-  // The title is the point of the sheet, so it opens focused and ready.
   useEffect(() => {
     if (!taskId) return
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 60)
-    return () => window.clearTimeout(timer)
+    const { task: current, openDay: currentDay } = seed.current
+    setTitle(current?.text ?? '')
+    setTime(current?.time ?? null)
+    setListId(current?.listId ?? null)
+    setDay(currentDay)
+    setPickerOpen(false)
   }, [taskId])
 
   const suggestions = useMemo(() => {
@@ -65,47 +75,59 @@ export function TaskSheet({
     const byId = new Map(lists.map((list) => [list.id, list]))
     return suggestLists(task.text, {
       lists,
-      currentListId: task.listId,
+      currentListId: listId ?? task.listId,
       recentListIds,
-    }).flatMap((listId) => {
-      const list = byId.get(listId)
+    }).flatMap((id) => {
+      const list = byId.get(id)
       return list ? [list] : []
     })
-  }, [task, lists, recentListIds])
+  }, [task, lists, listId, recentListIds])
 
   if (!task) return null
 
-  const day = location?.kind === 'agenda' ? location.day : null
-
-  const commitTitle = () => {
+  const save = () => {
     const next = title.trim()
     if (next && next !== task.text) onRename(task.id, next)
-    else if (!next) setTitle(task.text)
-  }
-
-  const close = () => {
-    commitTitle()
+    if (time !== task.time) onTimeChange(task.id, time)
+    if (listId && listId !== task.listId) onListChange(task.id, listId)
+    if (day !== openDay) onPlan(task.id, day)
     onClose()
   }
 
   return (
-    <Sheet open title="Task" onClose={close}>
+    <Sheet
+      open
+      title="Task"
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className="mos-btn mos-btn--danger"
+            onClick={() => onDelete(task.id)}
+          >
+            Delete
+          </button>
+          <button type="button" className="mos-btn mos-btn--accent" onClick={save}>
+            Save
+          </button>
+        </>
+      }
+    >
       <form
-        className="mos-sheet__title-form"
+        className="mos-titlerow"
         onSubmit={(event) => {
           event.preventDefault()
-          commitTitle()
-          inputRef.current?.blur()
+          save()
         }}
       >
+        <TimeBox time={time} onChange={setTime} />
         <input
-          ref={inputRef}
           className="mos-sheet__title-input"
           value={title}
           aria-label="Task title"
           enterKeyHint="done"
           onChange={(event) => setTitle(event.target.value)}
-          onBlur={commitTitle}
         />
       </form>
 
@@ -116,10 +138,10 @@ export function TaskSheet({
             <button
               key={list.id}
               type="button"
-              className={`mos-listchip${list.id === task.listId ? ' is-active' : ''}`}
+              className={`mos-listchip${list.id === listId ? ' is-active' : ''}`}
               style={{ '--tag': list.color } as CSSProperties}
-              aria-pressed={list.id === task.listId}
-              onClick={() => onListChange(task.id, list.id)}
+              aria-pressed={list.id === listId}
+              onClick={() => setListId(list.id)}
             >
               {list.name}
             </button>
@@ -143,7 +165,7 @@ export function TaskSheet({
               type="button"
               className={`mos-segment${day === id ? ' is-active' : ''}`}
               aria-pressed={day === id}
-              onClick={() => onPlan(task.id, day === id ? null : id)}
+              onClick={() => setDay(day === id ? null : id)}
             >
               {WHEN_LABELS[id]}
             </button>
@@ -151,44 +173,12 @@ export function TaskSheet({
         </div>
       </div>
 
-      <div className="mos-field-block">
-        <span className="mos-field-block__label">Time</span>
-        <div className="mos-time-row">
-          <input
-            type="time"
-            className="mos-time-input"
-            value={task.time ?? ''}
-            aria-label="Time"
-            onChange={(event) =>
-              onTimeChange(task.id, event.target.value || null)
-            }
-          />
-          {task.time && (
-            <button
-              type="button"
-              className="mos-chip"
-              onClick={() => onTimeChange(task.id, null)}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className="mos-quiet-danger"
-        onClick={() => onDelete(task.id)}
-      >
-        Delete task
-      </button>
-
       <ListPickerSheet
         open={pickerOpen}
         lists={lists}
-        selectedId={task.listId}
+        selectedId={listId}
         onClose={() => setPickerOpen(false)}
-        onSelect={(listId) => onListChange(task.id, listId)}
+        onSelect={setListId}
       />
     </Sheet>
   )

@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react'
 import { LIST_SORT_LABELS, type ListSortMode } from '../../lib/listSort'
 import type { MobileListSection } from '../../lib/mobileSelectors'
 import type { ContextList } from '../../lib/types'
-import { ListComposer } from '../components/ListComposer'
 import { TaskRow } from '../components/TaskRow'
 
 type Props = {
@@ -14,10 +13,13 @@ type Props = {
   onOpenSort: () => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
-  onAddTask: (listId: string, text: string) => void
 }
 
-/** One context list, drilled into from the Lists index. */
+/**
+ * One context list, drilled into from the Lists index. Adding happens in the
+ * capture bar on the app's bottom edge, which addresses this list while it is
+ * open, so the screen itself carries no second input.
+ */
 export function ListDetailScreen({
   section,
   lists,
@@ -26,7 +28,6 @@ export function ListDetailScreen({
   onOpenSort,
   onToggleTask,
   onOpenTask,
-  onAddTask,
 }: Props) {
   const { list, tasks } = section
   const open = tasks.filter((task) => !task.completed).length
@@ -55,7 +56,7 @@ export function ListDetailScreen({
         <p className="mos-empty">
           {plannedCount > 0
             ? 'Everything in this list is planned into a day.'
-            : 'Nothing here yet.'}
+            : 'Nothing here yet — add one below.'}
         </p>
       ) : (
         <ul className="mos-tasks">
@@ -71,8 +72,6 @@ export function ListDetailScreen({
           ))}
         </ul>
       )}
-
-      <ListComposer onAdd={(text) => onAddTask(list.id, text)} />
     </div>
   )
 }

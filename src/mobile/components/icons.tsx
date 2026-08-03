@@ -61,6 +61,22 @@ export function SearchIcon() {
   )
 }
 
+export function CloseIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden>
+      <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" {...STROKE} strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+export function GripIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden>
+      <path d="M7 6h.01M13 6h.01M7 10h.01M13 10h.01M7 14h.01M13 14h.01" {...STROKE} strokeWidth="2.4" />
+    </svg>
+  )
+}
+
 export function MoreIcon() {
   return (
     <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>

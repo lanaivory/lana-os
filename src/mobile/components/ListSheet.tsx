@@ -9,7 +9,6 @@ type Props = {
   onClose: () => void
   onRename: (listId: string, name: string) => void
   onTogglePin: (listId: string) => void
-  onStartReorder: () => void
   onDelete: (listId: string) => void
 }
 
@@ -19,7 +18,6 @@ export function ListSheet({
   onClose,
   onRename,
   onTogglePin,
-  onStartReorder,
   onDelete,
 }: Props) {
   const [name, setName] = useState(list?.name ?? '')
@@ -58,10 +56,9 @@ export function ListSheet({
       <Group>
         <Row
           label={list.pinned ? 'Unpin list' : 'Pin list'}
-          hint="Pinned lists sit in their own section on top"
+          hint="Pinned lists sit in their own section on top. Hold any row to drag it."
           onClick={() => onTogglePin(list.id)}
         />
-        <Row label="Reorder lists" onClick={onStartReorder} />
         <Row
           label="Delete list"
           hint={

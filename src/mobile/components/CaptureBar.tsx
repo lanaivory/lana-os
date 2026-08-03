@@ -1,15 +1,24 @@
 import { useRef, useState } from 'react'
 
 type Props = {
+  /** Says where the text will land; inside a list that is the list itself. */
+  placeholder?: string
+  /** Set where nothing opens on top, so several can be added in a row. */
+  stayFocused?: boolean
   onCapture: (raw: string) => void
 }
 
 /**
- * Always-available capture. Text is routed by the shared capture pipeline
- * (split, classify, timing words), so "call mum tomorrow" lands in a list and
- * on a day without any extra taps.
+ * The one text field on the app's bottom edge. On the Playlist and the Lists
+ * index it feeds the shared capture pipeline (split, classify, timing words),
+ * so "call mum tomorrow" lands in a list and on a day without any extra taps.
+ * Inside a list it adds to that list, so a screen never has two places to type.
  */
-export function CaptureBar({ onCapture }: Props) {
+export function CaptureBar({
+  placeholder = 'Capture a thought…',
+  stayFocused = false,
+  onCapture,
+}: Props) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const committing = useRef(false)
@@ -20,8 +29,8 @@ export function CaptureBar({ onCapture }: Props) {
     committing.current = true
     onCapture(raw)
     setValue('')
-    // Drop the keyboard so the reveal animation on the destination is visible.
-    inputRef.current?.blur()
+    // Drop the keyboard so the sheet that opens over it is readable.
+    if (!stayFocused) inputRef.current?.blur()
     window.setTimeout(() => {
       committing.current = false
     }, 300)
@@ -30,7 +39,14 @@ export function CaptureBar({ onCapture }: Props) {
   return (
     <form
       className="mos-capture"
-      aria-label="Quick capture"
+      aria-label={placeholder}
+      // The bar is one target: a tap anywhere in it opens the keyboard, rather
+      // than only the field's own text box.
+      onPointerDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        inputRef.current?.focus()
+      }}
       onSubmit={(event) => {
         event.preventDefault()
         submit()
@@ -40,11 +56,11 @@ export function CaptureBar({ onCapture }: Props) {
         ref={inputRef}
         className="mos-capture__input"
         value={value}
-        placeholder="Capture a thought…"
+        placeholder={placeholder}
         enterKeyHint="done"
         autoComplete="off"
         autoCorrect="on"
-        aria-label="Capture a thought"
+        aria-label={placeholder}
         onChange={(event) => setValue(event.target.value)}
       />
       <button

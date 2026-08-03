@@ -30,14 +30,16 @@ Both views share one store, one capture pipeline, and one cloud state. `src/App.
 
 Four tabs over the same store, built around showing less and deciding more for you.
 
-- **Playlist** — Today / Tomorrow / This Week, one day at a time, tap or swipe to change. A Now card sits on top: when a task is timed and close it takes the card with one full-width Done, otherwise it suggests a single untimed task you can re-roll. Completed work folds away behind an inline `Completed · Clear`, and completing or deleting raises a brief Undo toast.
-- **Lists** — every context list, pinned ones in their own section (pin icon, long-press, or swipe right). When capture cannot place something, a triage banner offers the raw text, a few lists, and "Also add to Today".
+- **Playlist** — Today / Tomorrow / This Week, one day at a time, tap or swipe to change. A Now card sits on top and holds one task, which is not repeated in the queue below it: when a task is timed and close it takes the card with one full-width Done, otherwise it suggests a single untimed task you can re-roll. Completed work folds away behind an inline `Completed · Clear`, and completing, clearing or deleting raises a brief Undo toast.
+- **Lists** — every context list, pinned ones in their own section. Tap a list to open it where it stands as a light run of bullets; the full page is one step further in. Pin with the pin on the row or a swipe right, and hold a row to drag it into a new order. When capture cannot place something, a triage banner offers the raw text, a few lists, and "Also add to Today".
 - **Calendar** — an agenda of dated commitments with a Week / Upcoming toggle. No hour timeline: a task's time lives on its row.
 - **Settings** — the capture number, what to do when the classifier is unsure, accent, Now-card lead time and shuffle source, and the optional Google Calendar connect.
 
-Rows are the same everywhere: checkbox, boxed monospace time on the left when there is one, title, then the owning list named plainly — and only when it differs from the surface you are on.
+Rows are the same everywhere and nothing is singled out by colour: checkbox, boxed monospace time on the left, title, then the owning list named plainly — and only when it differs from the surface you are on. On the Playlist every row carries the box, showing a quiet dash when there is no time, and tapping it sets one without leaving the row.
 
-Tapping a task opens one lean sheet: title, the classifier's top few lists as chips (with a searchable `More…` behind them), a Today / Tomorrow / This week segment that clears on a second tap, an optional time, and a quiet delete. Every control writes through, so closing is saving.
+One text field sits on the bottom edge, never two, and a tap anywhere along it opens the keyboard. On the Playlist and the Lists index it runs the capture pipeline; inside a list it adds straight to that list and keeps focus, so several go in a row. A capture that lands on screen flashes where it landed; one that files itself somewhere you cannot see says so — "Added to Reading".
+
+Tapping a task opens one lean sheet: the time boxed beside the title, the classifier's top few lists as chips (with a searchable `More…` behind them), and a Today / Tomorrow / This week segment that clears on a second tap. Delete sits bottom-left and Save bottom-right; the X walks away from the edit. Nothing in it grabs the keyboard on open.
 
 View state (day, sort, accent, lead time, onboarding) is per device in `lana-os:mobile:v1`, so a phone never fights the desktop board over synced state.
 

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { REMINDER_PRESETS, formatReminder } from '../../lib/commitments'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { formatReminder } from '../../lib/commitments'
 import { suggestLists } from '../../lib/listSuggest'
 import type { Commitment, ContextList } from '../../lib/types'
+import { ReminderSheet } from './ReminderSheet'
 import { Sheet } from './Sheet'
 
 export type CommitmentDraft = {
@@ -43,24 +44,25 @@ export function CommitmentSheet({
   const [date, setDate] = useState(defaultDate)
   const [time, setTime] = useState('')
   const [reminder, setReminder] = useState<number | null>(null)
-  const [customDays, setCustomDays] = useState('3')
-  const [customOpen, setCustomOpen] = useState(false)
+  const [reminderOpen, setReminderOpen] = useState(false)
   const [listId, setListId] = useState<string | null>(null)
+
+  // A cloud poll replaces the commitment object every few seconds, so the
+  // draft is seeded by identity only — otherwise a sync would erase typing.
+  const editing = useRef(commitment)
+  editing.current = commitment
+  const commitmentId = commitment?.id ?? null
 
   useEffect(() => {
     if (!open) return
-    setTitle(commitment?.title ?? '')
-    setDate(commitment?.date ?? defaultDate)
-    setTime(commitment?.time ?? '')
-    setReminder(commitment?.reminderMinutesBefore ?? null)
-    setListId(commitment?.listId ?? null)
-    const minutes = commitment?.reminderMinutesBefore ?? null
-    const preset = REMINDER_PRESETS.some((p) => p.minutes === minutes)
-    setCustomOpen(!preset)
-    if (!preset && minutes !== null) {
-      setCustomDays(String(Math.max(1, Math.round(minutes / 1440))))
-    }
-  }, [open, commitment, defaultDate])
+    const current = editing.current
+    setTitle(current?.title ?? '')
+    setDate(current?.date ?? defaultDate)
+    setTime(current?.time ?? '')
+    setReminder(current?.reminderMinutesBefore ?? null)
+    setListId(current?.listId ?? null)
+    setReminderOpen(false)
+  }, [open, commitmentId, defaultDate])
 
   const suggestions = useMemo(() => {
     const byId = new Map(lists.map((list) => [list.id, list]))
@@ -72,17 +74,15 @@ export function CommitmentSheet({
 
   const canSave = title.trim().length > 0 && Boolean(date)
 
-  /** Closing is saving; an empty draft is simply discarded. */
   const save = () => {
-    if (canSave) {
-      onSave({
-        title: title.trim(),
-        date,
-        time: time || null,
-        reminderMinutesBefore: reminder,
-        listId,
-      })
-    }
+    if (!canSave) return
+    onSave({
+      title: title.trim(),
+      date,
+      time: time || null,
+      reminderMinutesBefore: reminder,
+      listId,
+    })
     onClose()
   }
 
@@ -90,7 +90,33 @@ export function CommitmentSheet({
     <Sheet
       open={open}
       title={commitment ? 'Commitment' : 'New commitment'}
-      onClose={save}
+      onClose={onClose}
+      footer={
+        <>
+          {commitment && onDelete ? (
+            <button
+              type="button"
+              className="mos-btn mos-btn--danger"
+              onClick={() => {
+                onDelete(commitment.id)
+                onClose()
+              }}
+            >
+              Delete
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            className="mos-btn mos-btn--accent"
+            disabled={!canSave}
+            onClick={save}
+          >
+            Save
+          </button>
+        </>
+      }
     >
       <form
         className="mos-sheet__title-form"
@@ -131,63 +157,19 @@ export function CommitmentSheet({
 
       <div className="mos-field-block">
         <span className="mos-field-block__label">Reminder</span>
-        <div className="mos-chiprow">
-          {REMINDER_PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className={`mos-listchip${
-                !customOpen && reminder === preset.minutes ? ' is-active' : ''
-              }`}
-              aria-pressed={!customOpen && reminder === preset.minutes}
-              onClick={() => {
-                setCustomOpen(false)
-                setReminder(preset.minutes)
-              }}
-            >
-              {preset.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`mos-listchip${customOpen ? ' is-active' : ''}`}
-            aria-pressed={customOpen}
-            onClick={() => {
-              setCustomOpen(true)
-              setReminder(Math.max(1, Number(customDays) || 1) * 1440)
-            }}
-          >
-            Custom
-          </button>
-        </div>
-
-        {customOpen && (
-          <label className="mos-inline-field">
-            <input
-              type="number"
-              min="1"
-              max="365"
-              inputMode="numeric"
-              value={customDays}
-              aria-label="Days before"
-              onChange={(event) => {
-                setCustomDays(event.target.value)
-                const days = Math.max(1, Number(event.target.value) || 1)
-                setReminder(days * 1440)
-              }}
-            />
-            <span>days before</span>
-          </label>
+        <button
+          type="button"
+          className="mos-picker-btn"
+          onClick={() => setReminderOpen(true)}
+        >
+          <span>{formatReminder(reminder)}</span>
+          <span className="mos-picker-btn__hint">Change</span>
+        </button>
+        {reminder !== null && !pushEnabled && (
+          <p className="mos-note">
+            Turn on notifications in Settings to receive it.
+          </p>
         )}
-
-        <p className="mos-note">
-          {reminder === null
-            ? 'No reminder.'
-            : `${formatReminder(reminder)} — sent as a phone notification.`}
-          {reminder !== null && !pushEnabled
-            ? ' Turn on notifications in Settings to receive it.'
-            : ''}
-        </p>
       </div>
 
       <div className="mos-field-block">
@@ -208,18 +190,12 @@ export function CommitmentSheet({
         </div>
       </div>
 
-      {commitment && onDelete && (
-        <button
-          type="button"
-          className="mos-quiet-danger"
-          onClick={() => {
-            onDelete(commitment.id)
-            onClose()
-          }}
-        >
-          Delete commitment
-        </button>
-      )}
+      <ReminderSheet
+        open={reminderOpen}
+        minutes={reminder}
+        onClose={() => setReminderOpen(false)}
+        onSelect={setReminder}
+      />
     </Sheet>
   )
 }

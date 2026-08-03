@@ -1,9 +1,8 @@
 import type { CSSProperties } from 'react'
 import { HighlightedText } from '../../components/HighlightedText'
-import { taskShowsNew } from '../../lib/taskNew'
-import { formatPlanTime } from '../../lib/timeFormat'
 import type { ContextList, Task } from '../../lib/types'
 import { displayTextWithoutUrl, extractUrl } from '../../lib/urls'
+import { TimeBox } from './TimeBox'
 import { CheckIcon, LinkIcon } from './icons'
 
 type Props = {
@@ -17,13 +16,18 @@ type Props = {
   contextListId?: string | null
   /** Search results also say which day the task is planned into. */
   dayLabel?: string | null
+  /** On the Playlist every row shows the box, so the left edge lines up. */
+  alwaysShowTime?: boolean
   onToggle: (taskId: string) => void
   onOpen: (taskId: string) => void
+  /** Present where the time can be set from the row itself. */
+  onTimeChange?: (taskId: string, time: string | null) => void
 }
 
 /**
- * One scannable line: checkbox, the time in a box on the left when there is
- * one, the title, and the owning list named plainly at the end.
+ * One scannable line: checkbox, the time in a box on the left, the title, and
+ * the owning list named plainly at the end. Every row wears the same surface —
+ * nothing is singled out by colour.
  */
 export function TaskRow({
   task,
@@ -31,27 +35,22 @@ export function TaskRow({
   query = '',
   contextListId = null,
   dayLabel = null,
+  alwaysShowTime = false,
   onToggle,
   onOpen,
+  onTimeChange,
 }: Props) {
   const url = extractUrl(task.text)
   const title = url ? displayTextWithoutUrl(task.text) : task.text
-  const time = formatPlanTime(task.time)
   const list =
     task.listId === contextListId
       ? undefined
       : lists.find((l) => l.id === task.listId)
+  const showTime = alwaysShowTime || Boolean(task.time)
 
   return (
     <li
-      className={[
-        'mos-task',
-        task.completed ? 'is-done' : '',
-        task.overdue && !task.completed ? 'is-overdue' : '',
-        taskShowsNew(task) ? 'is-new' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={`mos-task${task.completed ? ' is-done' : ''}`}
       data-mos-task={task.id}
     >
       <button
@@ -64,7 +63,15 @@ export function TaskRow({
         <CheckIcon />
       </button>
 
-      {time && <span className="mos-time-box">{time}</span>}
+      {showTime && (
+        <TimeBox
+          time={task.time}
+          label={`Time for ${task.text}`}
+          onChange={
+            onTimeChange ? (next) => onTimeChange(task.id, next) : undefined
+          }
+        />
+      )}
 
       <button
         type="button"
