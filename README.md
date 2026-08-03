@@ -37,7 +37,9 @@ Four tabs over the same store, built around showing less and deciding more for y
 
 Rows are the same everywhere: checkbox, boxed monospace time on the left when there is one, title, then the owning list named plainly — and only when it differs from the surface you are on.
 
-Tapping a task opens one lean sheet: title, the classifier's top few lists as chips (with a searchable `More…` behind them), a Today / Tomorrow / This week segment that clears on a second tap, an optional time, and a quiet delete. Every control writes through, so closing is saving.
+One text field sits on the bottom edge, never two. On the Playlist and the Lists index it runs the capture pipeline; inside a list it adds straight to that list and keeps focus, so several go in a row.
+
+Tapping a task opens one lean sheet: title, the classifier's top few lists as chips (with a searchable `More…` behind them), a Today / Tomorrow / This week segment that clears on a second tap, an optional time, and a quiet delete. Every control writes through, so closing is saving. Nothing in it grabs the keyboard on open.
 
 View state (day, sort, accent, lead time, onboarding) is per device in `lana-os:mobile:v1`, so a phone never fights the desktop board over synced state.
 
