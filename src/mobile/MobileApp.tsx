@@ -447,6 +447,12 @@ export function MobileApp({ store }: { store: LanaStore }) {
   )
 
   const captureVisible = tab === 'playlist' || tab === 'lists'
+  /*
+   * The open list is remembered across tabs, so the capture bar only addresses
+   * it while that list is the screen you are actually looking at.
+   */
+  const captureList =
+    tab === 'lists' && detailSection ? detailSection.list : null
   const openToday = dayOpenCount(state, 'today', todayKey)
   const openLists = overviews.reduce((sum, o) => sum + o.open, 0)
   const rootStyle = { '--accent': accentColor(prefs.accent) } as CSSProperties
@@ -666,14 +672,12 @@ export function MobileApp({ store }: { store: LanaStore }) {
       )}
 
       {captureVisible &&
-        (detailSection ? (
+        (captureList ? (
           <CaptureBar
-            key={detailSection.list.id}
-            placeholder={`Add to ${detailSection.list.name}`}
+            key={captureList.id}
+            placeholder={`Add to ${captureList.name}`}
             stayFocused
-            onCapture={(text) =>
-              store.addTaskToList(detailSection.list.id, text)
-            }
+            onCapture={(text) => store.addTaskToList(captureList.id, text)}
           />
         ) : (
           <CaptureBar key="capture" onCapture={onCapture} />
