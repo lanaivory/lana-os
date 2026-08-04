@@ -25,9 +25,9 @@ type Props = {
 }
 
 /**
- * One scannable line: checkbox, the time in a box on the left, the title, and
- * the owning list named plainly at the end. Every row wears the same surface —
- * nothing is singled out by colour.
+ * One scannable line: checkbox, the time on the left, the title, and the
+ * owning list named plainly at the end. The row carries no card of its own — a
+ * hairline is all that stands between it and the next one.
  */
 export function TaskRow({
   task,

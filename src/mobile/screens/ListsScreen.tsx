@@ -23,7 +23,7 @@ import type { ContextList, Task } from '../../lib/types'
 import { PLAYLIST_META } from '../../lib/types'
 import { TaskRow } from '../components/TaskRow'
 import { TriageBanner } from '../components/TriageBanner'
-import { ChevronIcon, PinIcon, SearchIcon } from '../components/icons'
+import { PinIcon, SearchIcon } from '../components/icons'
 import { usePinGesture } from '../hooks/usePinGesture'
 
 /** How many bullets an inline peek shows before it says how many are left. */
@@ -82,45 +82,38 @@ function ListIndexRow({
   return (
     <li
       ref={setNodeRef}
-      className={`mos-index__item${isDragging ? ' is-dragging' : ''}${
-        expanded ? ' is-open' : ''
-      }`}
+      className={`mos-index__item${isDragging ? ' is-dragging' : ''}`}
       style={style}
       {...listeners}
     >
-      <div className="mos-index__head">
-        <button
-          type="button"
-          className="mos-index__open"
-          aria-expanded={expanded}
-          {...handlers}
-          onClick={() => {
-            if (consumedTap()) return
-            onToggleExpanded()
-          }}
-        >
-          <span className="mos-index__dot" aria-hidden />
-          <span className="mos-index__text">
-            <span className="mos-index__name">{list.name}</span>
-            <span className="mos-index__meta">
-              {overview.open === 0 ? 'All clear' : `${overview.open} open`}
-              {overview.planned > 0 && ` · ${overview.planned} planned`}
-            </span>
+      <button
+        type="button"
+        className="mos-index__open"
+        aria-expanded={expanded}
+        {...handlers}
+        onClick={() => {
+          if (consumedTap()) return
+          onToggleExpanded()
+        }}
+      >
+        <span className="mos-index__dot" aria-hidden />
+        <span className="mos-index__text">
+          <span className="mos-index__name">{list.name}</span>
+          {/*
+           * A number, and only when there is something to count. A list with
+           * nothing waiting says nothing — that is what all clear looks like.
+           */}
+          {overview.open > 0 && (
+            <span className="mos-index__meta">{overview.open}</span>
+          )}
+        </span>
+        {/* A marker, not a control: pinning is the swipe, or the list's own menu. */}
+        {list.pinned && (
+          <span className="mos-index__pinned" aria-hidden>
+            <PinIcon filled />
           </span>
-          <ChevronIcon open={expanded} />
-        </button>
-
-        {/* Always present: a pin you cannot see is a pin nobody finds. */}
-        <button
-          type="button"
-          className={`mos-index__pin${list.pinned ? '' : ' is-off'}`}
-          aria-pressed={list.pinned}
-          aria-label={`${list.pinned ? 'Unpin' : 'Pin'} ${list.name}`}
-          onClick={onTogglePin}
-        >
-          <PinIcon filled={list.pinned} />
-        </button>
-      </div>
+        )}
+      </button>
 
       {expanded && (
         <div className="mos-peek">
@@ -157,7 +150,8 @@ function ListIndexRow({
  * Index of every context list, pinned ones first. A tap opens the list where
  * it stands; the full page is a step further in, for when you want to work in
  * one. Hold a row to drag it into a new order — within its own section, since
- * the stored order is shared with the desktop board.
+ * the stored order is shared with the desktop board. Flick a row right to pin
+ * it, or use the list's own menu; the rows themselves carry no controls.
  */
 export function ListsScreen({
   overviews,

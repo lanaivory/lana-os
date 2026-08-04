@@ -8,18 +8,19 @@ type Props = {
 }
 
 /**
- * The boxed monospace time. On a Playlist row it is always present — a quiet
- * dash when there is no time — so the left edge of every row lines up and a
- * time is one tap away rather than a trip through the edit sheet.
+ * The monospace time stamp. On a Playlist row it is always present — a quiet
+ * dash when there is no time — and holds a fixed width, so the left edge of
+ * every row lines up and a time is one tap away rather than a trip through the
+ * edit sheet.
  *
- * The native picker is driven by a transparent input laid over the box, which
- * keeps the box's own look while giving the platform's own time UI.
+ * The native picker is driven by a transparent input laid over the stamp,
+ * which is also what gives it a full-height tap target.
  */
 export function TimeBox({ time, onChange, label = 'Time' }: Props) {
   const shown = formatPlanTime(time)
   const empty = !shown
 
-  // A stamp with nothing to stamp is just an empty box.
+  // A stamp with nothing to stamp and nothing to set is just empty space.
   if (!onChange) {
     return shown ? <span className="mos-time-box">{shown}</span> : null
   }
