@@ -55,7 +55,6 @@ function NotificationsRow() {
 
 type Props = {
   theme: ThemeMode
-  sortTodayByTime: boolean
   completedCount: number
   trashCount: number
   textCaptureConnected: boolean
@@ -66,7 +65,6 @@ type Props = {
   unsureListId: string
   prefs: MobilePrefs
   onToggleTheme: () => void
-  onSortTodayByTimeChange: (value: boolean) => void
   onCaptureNumberChange: (value: string) => void
   onUnsureCaptureChange: (mode: UnsureCaptureMode, listId?: string) => void
   onAccentChange: (accent: AccentId) => void
@@ -84,7 +82,6 @@ type Props = {
 
 export function SettingsScreen({
   theme,
-  sortTodayByTime,
   completedCount,
   trashCount,
   textCaptureConnected,
@@ -95,7 +92,6 @@ export function SettingsScreen({
   unsureListId,
   prefs,
   onToggleTheme,
-  onSortTodayByTimeChange,
   onCaptureNumberChange,
   onUnsureCaptureChange,
   onAccentChange,
@@ -227,18 +223,7 @@ export function SettingsScreen({
         </div>
       </Group>
 
-      <Group label="Planning" hint="Off keeps the order you arranged by hand.">
-        <label className="mos-toggle">
-          <input
-            type="checkbox"
-            checked={sortTodayByTime}
-            onChange={(event) => onSortTodayByTimeChange(event.target.checked)}
-          />
-          <span>Sort Today by time</span>
-        </label>
-      </Group>
-
-      <Group label="Lists" hint="Hold a row on the Lists tab to drag it into a new order.">
+      <Group label="Lists" hint="Hold a row to drag it into a new order, and flick one right to pin it.">
         <Row label="New list" onClick={onNewList} />
         <Row
           label="Undo last change"

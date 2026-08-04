@@ -66,13 +66,14 @@ function ListIndexRow({
   onTogglePin: () => void
   onOpenTask: (taskId: string) => void
 }) {
-  const { handlers, consumedTap } = usePinGesture(onTogglePin)
+  const { handlers, offset, armed, consumedTap } = usePinGesture(onTogglePin)
   const { list } = overview
   const { listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: list.id })
 
   const style = {
     '--tag': list.color,
+    '--slide': `${offset}px`,
     transform: CSS.Translate.toString(transform),
     transition,
   } as CSSProperties
@@ -82,10 +83,24 @@ function ListIndexRow({
   return (
     <li
       ref={setNodeRef}
-      className={`mos-index__item${isDragging ? ' is-dragging' : ''}`}
+      className={[
+        'mos-index__item',
+        isDragging ? 'is-dragging' : '',
+        offset > 0 ? 'is-swiping' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={style}
       {...listeners}
     >
+      {/* What the flick will do, uncovered as the row moves off it. */}
+      <span
+        className={`mos-index__reveal${armed ? ' is-armed' : ''}`}
+        aria-hidden
+      >
+        <PinIcon filled={!list.pinned} />
+      </span>
+
       <button
         type="button"
         className="mos-index__open"

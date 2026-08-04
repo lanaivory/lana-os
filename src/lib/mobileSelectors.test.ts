@@ -86,13 +86,22 @@ describe('agendaTasks', () => {
     ])
   })
 
-  it('leaves other days in manual order even when sort-by-time is on', () => {
+  it('sorts every day by time, not only Today', () => {
     const state = stateWith([
       task({ id: 'a', text: 'A', listId: 'errands', time: '14:00' }),
       task({ id: 'c', text: 'C', listId: 'errands', time: '09:30' }),
     ])
     state.playlists.tomorrow = ['a', 'c']
     state.sortTodayByTime = true
+    expect(agendaTasks(state, 'tomorrow').map((t) => t.id)).toEqual(['c', 'a'])
+  })
+
+  it('leaves every day in manual order when the sort is off', () => {
+    const state = stateWith([
+      task({ id: 'a', text: 'A', listId: 'errands', time: '14:00' }),
+      task({ id: 'c', text: 'C', listId: 'errands', time: '09:30' }),
+    ])
+    state.playlists.tomorrow = ['a', 'c']
     expect(agendaTasks(state, 'tomorrow').map((t) => t.id)).toEqual(['a', 'c'])
   })
 

@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { LIST_SORT_LABELS, type ListSortMode } from '../../lib/listSort'
 import type { MobileListSection } from '../../lib/mobileSelectors'
 import type { ContextList } from '../../lib/types'
-import { TaskRow } from '../components/TaskRow'
+import { TaskRow, type TaskRowActions } from '../components/TaskRow'
 
 type Props = {
   section: MobileListSection
@@ -13,12 +13,15 @@ type Props = {
   onOpenSort: () => void
   onToggleTask: (taskId: string) => void
   onOpenTask: (taskId: string) => void
+  onMoveTask: (taskId: string) => void
+  onDeleteTask: (taskId: string) => void
 }
 
 /**
  * One context list, drilled into from the Lists index. Adding happens in the
  * capture bar on the app's bottom edge, which addresses this list while it is
- * open, so the screen itself carries no second input.
+ * open, so the screen itself carries no second input. Rows swipe the same way
+ * they do on the Playlist: right to complete, left for Move and Delete.
  */
 export function ListDetailScreen({
   section,
@@ -28,9 +31,26 @@ export function ListDetailScreen({
   onOpenSort,
   onToggleTask,
   onOpenTask,
+  onMoveTask,
+  onDeleteTask,
 }: Props) {
+  const [swipedId, setSwipedId] = useState<string | null>(null)
   const { list, tasks } = section
   const open = tasks.filter((task) => !task.completed).length
+
+  const actions: TaskRowActions = {
+    onComplete: onToggleTask,
+    onMove: (taskId) => {
+      setSwipedId(null)
+      onMoveTask(taskId)
+    },
+    onDelete: (taskId) => {
+      setSwipedId(null)
+      onDeleteTask(taskId)
+    },
+    openId: swipedId,
+    onOpenChange: setSwipedId,
+  }
 
   return (
     <div
@@ -66,6 +86,7 @@ export function ListDetailScreen({
               task={task}
               lists={lists}
               contextListId={list.id}
+              actions={actions}
               onToggle={onToggleTask}
               onOpen={onOpenTask}
             />

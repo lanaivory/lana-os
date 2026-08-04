@@ -64,4 +64,19 @@ describe('moveWithinGroup', () => {
     expect(moveWithinGroup(full, full, 'a', 'a')).toBe(full)
     expect(moveWithinGroup(full, full, 'ghost', 'a')).toBe(full)
   })
+
+  it('reorders a day around the rows it is not showing', () => {
+    // A Playlist queue hides completed tasks behind the Completed fold and the
+    // one the Now card is holding; dragging what is on screen must not disturb
+    // where the rest sit in the day.
+    const day = ['now', 'first', 'done', 'second', 'third']
+    const onScreen = ['first', 'second', 'third']
+    expect(moveWithinGroup(day, onScreen, 'third', 'first')).toEqual([
+      'now',
+      'third',
+      'done',
+      'first',
+      'second',
+    ])
+  })
 })

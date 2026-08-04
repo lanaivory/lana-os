@@ -2,9 +2,9 @@ import { useMemo } from 'react'
 import { daysUntil, upcomingCommitments, weekCommitments } from '../../lib/commitments'
 import type { FeedEvent } from '../../lib/ics'
 import type { AgendaView } from '../../lib/mobilePrefs'
-import { formatPlanTime } from '../../lib/timeFormat'
 import type { AppState, Commitment } from '../../lib/types'
 import { CommitmentRow } from '../components/CommitmentRow'
+import { TimeBox } from '../components/TimeBox'
 import { PlusIcon } from '../components/icons'
 
 export type FeedStatus = 'off' | 'loading' | 'ok' | 'error'
@@ -146,17 +146,17 @@ export function CalendarScreen({
               ))}
               {group.events.map((event) => (
                 <li key={`${event.uid}-${event.date}`} className="mos-task is-readonly">
-                  {event.time && (
-                    <span className="mos-time-box">
-                      {formatPlanTime(event.time)}
+                  <div className="mos-task__slide">
+                    {/* Nothing to check, but the column still has to line up. */}
+                    <span className="mos-task__gutter" aria-hidden />
+                    <TimeBox time={event.time} hold />
+                    <span className="mos-task__body">
+                      <span className="mos-task__title">{event.title}</span>
+                      <span className="mos-task__trailing">
+                        <span className="mos-task__day">Calendar</span>
+                      </span>
                     </span>
-                  )}
-                  <span className="mos-task__body">
-                    <span className="mos-task__title">{event.title}</span>
-                    <span className="mos-task__trailing">
-                      <span className="mos-task__day">Calendar</span>
-                    </span>
-                  </span>
+                  </div>
                 </li>
               ))}
             </ul>

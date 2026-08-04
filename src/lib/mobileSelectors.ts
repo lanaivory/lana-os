@@ -43,13 +43,19 @@ function taskById(state: AppState, id: string): Task | null {
   return state.tasks[id] ?? null
 }
 
-/** Tasks planned into one day, in the order the playlist stores them. */
+/**
+ * Tasks planned into one day, in the order the playlist stores them — which is
+ * the order the Playlist queue's Custom sort shows, and the order a drag there
+ * rewrites. `sortTodayByTime` takes over for every day instead: the queue's own
+ * sort control is per-surface, not per-day, so a choice made while looking at
+ * Tomorrow has to hold when you get there.
+ */
 export function agendaTasks(state: AppState, day: PlaylistId): Task[] {
   const tasks = state.playlists[day]
     .map((id) => taskById(state, id))
     .filter((task): task is Task => task !== null)
 
-  if (day !== 'today' || !state.sortTodayByTime) return tasks
+  if (!state.sortTodayByTime) return tasks
 
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1

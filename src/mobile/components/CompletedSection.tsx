@@ -51,6 +51,8 @@ export function CompletedSection({
               key={task.id}
               task={task}
               lists={lists}
+              /* The queue above keeps a time column, so the fold does too. */
+              alwaysShowTime
               onToggle={onToggleTask}
               onOpen={onOpenTask}
             />
