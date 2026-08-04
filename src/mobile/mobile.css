@@ -881,12 +881,13 @@
   letter-spacing: 0.02em;
 }
 
+/* Quieter than the accent actions above it: this one is genuinely optional. */
 .mos-linkish {
   align-self: flex-start;
   padding: 6px 2px;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--muted);
   font-size: 0.82rem;
   font-weight: 600;
 }

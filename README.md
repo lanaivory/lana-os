@@ -35,7 +35,7 @@ Four tabs over the same store, built around showing less and deciding more for y
 - **Calendar** — an agenda of dated commitments with a Week / Upcoming toggle. No hour timeline: a task's time lives on its row.
 - **Settings** — the capture number, what to do when the classifier is unsure, accent, Now-card lead time and shuffle source, and the optional Google Calendar connect.
 
-Rows are the same everywhere and nothing is singled out by colour: checkbox, boxed monospace time on the left, title, then the owning list named plainly — and only when it differs from the surface you are on. On the Playlist every row carries the box, showing a quiet dash when there is no time, and tapping it sets one without leaving the row.
+Rows are the same everywhere and nothing is singled out by colour: checkbox, monospace time on the left, title, then the owning list named plainly — and only when it differs from the surface you are on. Nothing wears a card except the Now card; lists and queues are lines held apart by a hairline, so the page reads as one column rather than a stack of tiles. On the Playlist every row keeps the time column, showing a quiet dash when there is no time, and tapping it sets one without leaving the row.
 
 One text field sits on the bottom edge, never two, and a tap anywhere along it opens the keyboard. On the Playlist and the Lists index it runs the capture pipeline; inside a list it adds straight to that list and keeps focus, so several go in a row. A capture that lands on screen flashes where it landed; one that files itself somewhere you cannot see says so — "Added to Reading".
 
