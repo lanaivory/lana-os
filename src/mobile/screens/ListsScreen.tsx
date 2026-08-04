@@ -82,9 +82,7 @@ function ListIndexRow({
   return (
     <li
       ref={setNodeRef}
-      className={`mos-index__item${isDragging ? ' is-dragging' : ''}${
-        expanded ? ' is-open' : ''
-      }`}
+      className={`mos-index__item${isDragging ? ' is-dragging' : ''}`}
       style={style}
       {...listeners}
     >

@@ -61,6 +61,7 @@ export function ListPickerSheet({
                   close()
                 }}
               >
+                <span className="mos-pick__dot" aria-hidden />
                 <span className="mos-pick__text">{list.name}</span>
                 {list.id === selectedId && <CheckIcon />}
               </button>
