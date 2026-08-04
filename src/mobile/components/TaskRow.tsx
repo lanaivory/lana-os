@@ -8,7 +8,7 @@ import { TimeBox } from './TimeBox'
 import { CheckIcon, LinkIcon } from './icons'
 
 /** Room for the two labels a left swipe uncovers. */
-const ACTIONS_WIDTH_PX = 142
+const ACTIONS_WIDTH_PX = 152
 
 /** What a row can be swiped into doing. Omit to leave the row inert. */
 export type TaskRowActions = {

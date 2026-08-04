@@ -8,6 +8,8 @@ const REVEAL_PX = 44
 const MAX_RIGHT_PX = 96
 /** A gesture counts as horizontal only when it clearly out-runs its drift. */
 const AXIS_RATIO = 1.6
+/** Under this, the finger was tapping and merely wobbled on the way. */
+const DEAD_ZONE_PX = 6
 
 export type RowSwipeArmed = 'complete' | 'actions' | null
 
@@ -78,11 +80,16 @@ export function useRowSwipe({
   const onPointerMove = (event: ReactPointerEvent) => {
     const from = start.current
     if (!from || from.id !== event.pointerId) return
+    // A hold has become a drag-to-reorder; that gesture owns the pointer now.
+    if (disabled) {
+      reset()
+      return
+    }
 
     const base = from.open ? -openPx : 0
     const dx = event.clientX - from.x
     const dy = Math.abs(event.clientY - from.y)
-    if (Math.abs(dx) < dy * AXIS_RATIO) {
+    if (Math.abs(dx) < DEAD_ZONE_PX || Math.abs(dx) < dy * AXIS_RATIO) {
       travelled.current = null
       setDragOffset(null)
       return
@@ -103,7 +110,14 @@ export function useRowSwipe({
     const from = start.current
     const distance = travelled.current
     reset()
-    if (!from || from.id !== event.pointerId || distance === null) return
+    if (!from || from.id !== event.pointerId) return
+    if (disabled) {
+      // The drag that took the pointer also owns the release, so the tap it
+      // would otherwise fire is spent here rather than opening the task.
+      fired.current = true
+      return
+    }
+    if (distance === null) return
 
     if (from.open) {
       // From an open row the gesture only decides whether it stays open.

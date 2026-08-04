@@ -1543,12 +1543,18 @@
 }
 
 .mos-sheet__body {
+  /*
+   * Named so that a run of rows in a sheet closes this gap and knits into one
+   * ruled column, the way it does inside a group. A hairline with a 16px gap
+   * above it is two dividers doing one job.
+   */
+  --row-gap: 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 4px 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--row-gap);
 }
 
 .mos-sheet__message {
@@ -1824,21 +1830,6 @@ a.mos-btn {
 .mos-btn--on {
   border-color: color-mix(in srgb, var(--accent-2) 50%, transparent);
   color: var(--accent-2);
-}
-
-.mos-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: var(--tap);
-  padding: 0 2px;
-  font-size: 0.9rem;
-}
-
-.mos-toggle input {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent-2);
 }
 
 /* --------------------------------------------------------- picker sheets */

@@ -238,18 +238,21 @@ export function PlaylistScreen({
           />
         )}
 
-        <div className="mos-day__bar">
-          {caption && <p className="mos-day__caption">{caption}</p>}
-          <button
-            type="button"
-            className="mos-chip mos-chip--sort"
-            aria-label={`Sort the queue, currently ${canReorder ? 'Custom' : 'By time'}`}
-            onClick={onOpenSort}
-          >
-            Sort · {canReorder ? 'Custom' : 'By time'}
-            <ChevronIcon open />
-          </button>
-        </div>
+        {/* Nothing to say about an order until the day holds something. */}
+        {total > 0 && (
+          <div className="mos-day__bar">
+            {caption && <p className="mos-day__caption">{caption}</p>}
+            <button
+              type="button"
+              className="mos-chip mos-chip--sort"
+              aria-label={`Sort the queue, currently ${canReorder ? 'Custom' : 'By time'}`}
+              onClick={onOpenSort}
+            >
+              Sort · {canReorder ? 'Custom' : 'By time'}
+              <ChevronIcon open />
+            </button>
+          </div>
+        )}
 
         {open.length === 0 && commitments.length === 0 && !promotedId ? (
           <p className="mos-empty">
