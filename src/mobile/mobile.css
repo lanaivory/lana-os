@@ -8,6 +8,10 @@
  * One rule runs through all of it: lists and queues are lines held apart by a
  * hairline, and the Now card is the only card. Anything that reaches for a
  * fill, a border and a radius at once is making a second one.
+ *
+ * That hairline is `--hairline`, declared once and used by every divider in the
+ * file at full width. Nothing insets it: a run of rows should read as one ruled
+ * column, and an inset divider only makes the eye ask what the gap is for.
  */
 
 .mos {
@@ -15,8 +19,10 @@
   --bg-elev: #12161d;
   --surface: #151a22;
   --surface-2: #1a202a;
-  --line: rgba(232, 228, 220, 0.09);
+  --line: rgba(232, 228, 220, 0.08);
   --line-strong: rgba(232, 228, 220, 0.16);
+  /* The one divider in the app. Every rule that separates rows uses this. */
+  --hairline: 1px solid var(--line);
   --text: #ece8e1;
   --muted: #9a958c;
   --faint: #6d6860;
@@ -66,7 +72,7 @@
   --bg-elev: #f7f3ec;
   --surface: #fffdf9;
   --surface-2: #f4efe6;
-  --line: rgba(40, 32, 22, 0.1);
+  --line: rgba(40, 32, 22, 0.09);
   --line-strong: rgba(40, 32, 22, 0.18);
   --text: #1d1a16;
   --muted: #6b645b;
@@ -100,7 +106,7 @@
   align-items: center;
   gap: 8px;
   padding: calc(10px + var(--safe-top)) 12px 10px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hairline);
   background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
   backdrop-filter: blur(14px);
 }
@@ -210,11 +216,36 @@
   }
 }
 
+/* Where the day says how it is going, and how it is ordered. */
+.mos-day__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+}
+
 .mos-day__caption {
   margin: 0 2px;
   color: var(--faint);
   font-size: 0.76rem;
   letter-spacing: 0.01em;
+}
+
+/* Pushed to the right of the bar, and pulled back so it ends on the row edge. */
+.mos-chip--sort {
+  gap: 4px;
+  margin-left: auto;
+  margin-right: -4px;
+  padding: 0 8px;
+  min-height: 32px;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  font-size: 0.78rem;
+}
+
+.mos-chip--sort .mos-chevron {
+  color: inherit;
 }
 
 .mos-empty {
@@ -240,15 +271,20 @@
   line-height: 1.6;
 }
 
-/* An offer, not an object: adding is one quiet line, never a dashed box. */
+/*
+ * Adding is a button, and has to look like one. Sitting under a run of rows, a
+ * bare accent line read as one more line; a light outline says this is a thing
+ * you press, without turning it into a dashed drop-target.
+ */
 .mos-ghost-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   align-self: flex-start;
-  min-height: var(--tap);
-  padding: 0 2px;
-  border: 0;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 10px;
   background: transparent;
   color: var(--accent);
   font-size: 0.86rem;
@@ -256,16 +292,21 @@
 }
 
 .mos-ghost-btn:active {
-  opacity: 0.6;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 /* ------------------------------------------------------------- day tabs */
 
-/* No track around the tabs: the chosen day is a soft pill, the rest is text. */
+/*
+ * No track around the tabs: the chosen day is a soft pill, the rest is text.
+ * The strip is also where the days are swiped, so it claims the horizontal
+ * axis while a flick up or down still scrolls the page.
+ */
 .mos-daytabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
+  touch-action: pan-y;
 }
 
 .mos-daytabs__tab {
@@ -317,28 +358,64 @@
  * One row = checkbox, an optional time on the left, the title, and the owning
  * list named plainly at the end. No pills, and no box: a queue is a run of
  * lines held apart by a hairline, so only the Now card reads as a card.
+ *
+ * The row is a frame; the line itself lives in `.mos-task__slide`, which a
+ * swipe can move aside to uncover what the row can do. The frame keeps the
+ * hairline, the press tint and the capture flash, so none of them travel with
+ * the line when it moves.
  */
 .mos-task {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 2px;
-  border-radius: 8px;
+  min-height: var(--tap);
+  /* Held rows swipe sideways; a flick up or down still scrolls the page. */
+  touch-action: pan-y;
 }
 
-/* Inset to the title, the way a note's lines are. */
 .mos-task + .mos-task::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 36px;
+  left: 0;
   right: 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
+}
+
+.mos-task__slide {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 0 2px;
+  transition: transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mos-task.can-swipe .mos-task__slide {
+  transform: translateX(var(--slide, 0px));
+}
+
+/* While a thumb is on it the line tracks the finger exactly, with no easing. */
+.mos-task.is-swiping .mos-task__slide {
+  transition: none;
 }
 
 .mos-task:active {
   background: color-mix(in srgb, var(--surface-2) 75%, transparent);
+}
+
+/* A row being dragged into a new order lifts off the page for the moment. */
+.mos-task.is-dragging {
+  z-index: 5;
+  background: var(--surface);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+}
+
+.mos-task.is-dragging::before {
+  border-top-color: transparent;
 }
 
 .mos-task.is-readonly {
@@ -366,6 +443,61 @@
   }
 }
 
+/*
+ * What a swipe will do, underneath the line and exactly as wide as the space
+ * the line has vacated — so nothing is ever half-covered, and the label
+ * arrives at the same rate as the gesture.
+ */
+.mos-task__reveal,
+.mos-task__actions {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.mos-task__reveal {
+  left: 0;
+  gap: 6px;
+  width: max(0px, var(--slide, 0px));
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Lit once letting go would commit, so the row answers before you release. */
+.mos-task__reveal.is-armed {
+  color: var(--accent-2);
+}
+
+.mos-task__actions {
+  right: 0;
+  justify-content: flex-end;
+  width: max(0px, calc(-1 * var(--slide, 0px)));
+}
+
+.mos-task__action {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mos-task__action:active {
+  color: var(--text);
+}
+
+.mos-task__action--danger {
+  color: var(--danger);
+}
+
 .mos-task__check {
   position: relative;
   flex: 0 0 auto;
@@ -373,7 +505,6 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  margin-top: 1px;
   border: 1.5px solid var(--line-strong);
   border-radius: 50%;
   background: transparent;
@@ -382,13 +513,19 @@
 
 /*
  * The circle stays small so rows stay dense, but the thing you actually tap
- * reaches into the row's own padding and the gap before the title — never
- * past it, so it cannot steal a tap from the row above.
+ * fills the row's height and the gap before the title — never past it, so it
+ * cannot steal a tap from the row above.
  */
 .mos-task__check::after {
   content: '';
   position: absolute;
-  inset: -8px -6px -8px -8px;
+  inset: -9px -6px -9px -8px;
+}
+
+/* Holds the checkbox's column on a row that cannot be checked. */
+.mos-task__gutter {
+  flex: 0 0 auto;
+  width: 26px;
 }
 
 .mos-task.is-done .mos-task__check {
@@ -397,13 +534,18 @@
   color: var(--accent-2);
 }
 
+/*
+ * Stretched to the row's full height, so the whole line opens the task rather
+ * than only the strip of pixels the title happens to occupy.
+ */
 .mos-task__body {
   flex: 1 1 auto;
+  align-self: stretch;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 11px 0;
   border: 0;
   background: transparent;
   text-align: left;
@@ -418,8 +560,8 @@
 }
 
 /*
- * The time keeps its fixed width so every title on a day starts at the same
- * place, but it is text now — a stamp, not a box.
+ * The time keeps a fixed width so every title on a day starts at the same
+ * place. The column is the constant; what sits in it is not.
  */
 .mos-time-box {
   flex: 0 0 auto;
@@ -432,15 +574,35 @@
   text-align: center;
 }
 
+/*
+ * A time that is set is a commitment, so it is stated rather than murmured: the
+ * row's own text colour on a faint chip. Scanning a day, "this one happens at a
+ * time" has to land before you have read anything.
+ */
+.mos-time-box.has-time {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* An empty slot is a place to put a time, not a thing to read. */
 .mos-time-box.is-empty {
   color: var(--faint);
 }
 
+/* Done is done: the chip stops asserting itself once the row is struck out. */
+.mos-task.is-done .mos-time-box.has-time {
+  background: transparent;
+  color: var(--faint);
+  font-weight: 400;
+}
+
 /*
- * The native picker, laid transparently over the stamp so the row keeps its
- * own look and the platform keeps its own time UI. The overlay is what makes
- * the tap target full height now that there is no box to aim at.
+ * The native picker, laid transparently over the chip so the row keeps its own
+ * look and the platform keeps its own time UI. The overlay is what makes the
+ * tap target full height.
  */
 .mos-time-box--set {
   position: relative;
@@ -565,9 +727,30 @@
   content: '';
   position: absolute;
   top: 0;
-  left: 21px;
+  left: 0;
   right: 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
+}
+
+/*
+ * The pin waiting under a row flicked to the right, as wide as the space the
+ * row has vacated — the gesture used to happen entirely in the dark.
+ */
+.mos-index__reveal {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: max(0px, var(--slide, 0px));
+  color: var(--muted);
+}
+
+.mos-index__reveal.is-armed {
+  color: var(--accent);
 }
 
 /* Picked up: the one moment a row leaves the page and needs an edge. */
@@ -582,6 +765,7 @@
 }
 
 .mos-index__open {
+  position: relative;
   width: 100%;
   min-width: 0;
   display: flex;
@@ -592,6 +776,12 @@
   border: 0;
   background: transparent;
   text-align: left;
+  transform: translateX(var(--slide, 0px));
+  transition: transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mos-index__item.is-swiping .mos-index__open {
+  transition: none;
 }
 
 .mos-index__open:active {
@@ -739,12 +929,16 @@
 /*
  * The only card in the app. Everything else is a line, so this needs no
  * shadow to stand out — being the one thing with an edge is enough.
+ *
+ * It hugs what it holds: a label, then the title and its one action side by
+ * side. Nothing is stretched to fill the card, and the card is no taller than
+ * the two rows inside it.
  */
 .mos-now {
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  padding: 14px;
+  gap: 6px;
+  padding: 10px 12px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
   border-radius: 16px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
@@ -754,7 +948,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 24px;
+  min-height: 22px;
+}
+
+.mos-now__head .mos-icon-btn {
+  width: 30px;
+  height: 30px;
+  margin-right: -6px;
+}
+
+.mos-now__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .mos-now__label {
@@ -766,19 +972,22 @@
 }
 
 .mos-now__task {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 9px;
+  min-height: var(--tap);
   border: 0;
   padding: 0;
   background: transparent;
   text-align: left;
 }
 
-/* Beside one big title the stamp hugs its text instead of holding a column. */
+/* Beside one big title the chip hugs its text instead of holding a column. */
 .mos-now__task .mos-time-box {
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .mos-now__title {
@@ -792,17 +1001,26 @@
   overflow-wrap: anywhere;
 }
 
-/* A pill that hugs its word, off to the right — not a slab across the card. */
+/*
+ * The row checkbox writ large. A wide pill on its own line floated in space
+ * below the title and made the card taller than it had any need to be; this
+ * sits beside what it completes, and is exactly as big as a thumb needs.
+ */
 .mos-now__done {
-  align-self: flex-end;
-  min-height: 38px;
-  padding: 0 22px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--accent);
   color: #17110a;
-  font-size: 0.9rem;
-  font-weight: 700;
+}
+
+.mos-now__done svg {
+  width: 18px;
+  height: 18px;
 }
 
 .mos-now__done:active {
@@ -911,7 +1129,7 @@
 }
 
 .mos-triage__card + .mos-triage__card {
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
 }
 
 .mos-triage__text {
@@ -1053,7 +1271,7 @@
  */
 .mos-row + .mos-row {
   margin-top: calc(-1 * var(--row-gap, 0px));
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
 }
 
 .mos-row:active {
@@ -1106,7 +1324,7 @@
   gap: 8px;
   height: var(--capture-h);
   padding: 0 12px;
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
   background: color-mix(in srgb, var(--bg-elev) 94%, transparent);
   backdrop-filter: blur(14px);
 }
@@ -1148,7 +1366,7 @@
   grid-template-columns: repeat(4, 1fr);
   height: var(--tabbar-h);
   padding: 6px 6px calc(6px + var(--safe-bottom));
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
   background: color-mix(in srgb, var(--bg-elev) 96%, transparent);
   backdrop-filter: blur(16px);
 }
@@ -1309,7 +1527,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
   background: var(--bg-elev);
 }
 
@@ -1647,7 +1865,7 @@ a.mos-btn {
 }
 
 .mos-pick li + li .mos-pick__item {
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
 }
 
 .mos-pick__item:active {
@@ -1693,7 +1911,7 @@ a.mos-btn {
 }
 
 .mos-trash__item + .mos-trash__item {
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline);
 }
 
 .mos-trash__kind {
@@ -1752,7 +1970,7 @@ a.mos-btn {
   align-items: flex-start;
   gap: 9px;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hairline);
 }
 
 .mos-onboard__step-title {

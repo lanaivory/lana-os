@@ -20,13 +20,16 @@ import { moveWithinGroup } from '../lib/reorder'
 import { localDateKey } from '../lib/storage'
 import { triageCards, triageCount } from '../lib/triage'
 import type { PlaylistId } from '../lib/types'
+import { PLAYLIST_META } from '../lib/types'
 import { CaptureBar } from './components/CaptureBar'
 import { CommitmentSheet, type CommitmentDraft } from './components/CommitmentSheet'
 import { ConfirmSheet } from './components/ConfirmSheet'
 import { ListSheet } from './components/ListSheet'
+import { MoveSheet } from './components/MoveSheet'
 import { Onboarding } from './components/Onboarding'
 import { PlanSheet } from './components/PlanSheet'
 import { PromptSheet } from './components/PromptSheet'
+import { QueueSortSheet } from './components/QueueSortSheet'
 import { ScreenHeader } from './components/ScreenHeader'
 import { SortSheet } from './components/SortSheet'
 import { TabBar } from './components/TabBar'
@@ -94,8 +97,10 @@ export function MobileApp({ store }: { store: LanaStore }) {
   const [query, setQuery] = useState('')
   const [listDetailId, setListDetailId] = useState<string | null>(null)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  const [moveTaskId, setMoveTaskId] = useState<string | null>(null)
   const [listSheetOpen, setListSheetOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
+  const [queueSortOpen, setQueueSortOpen] = useState(false)
   const [planDay, setPlanDay] = useState<PlaylistId | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
   const [newListOpen, setNewListOpen] = useState(false)
@@ -373,6 +378,8 @@ export function MobileApp({ store }: { store: LanaStore }) {
 
   const openTask = state.tasks[openTaskId ?? ''] ?? null
   const openTaskLocation = openTaskId ? taskLocation(state, openTaskId) : null
+  const moveTask = state.tasks[moveTaskId ?? ''] ?? null
+  const moveTaskLocation = moveTaskId ? taskLocation(state, moveTaskId) : null
 
   const planTask = useCallback(
     (taskId: string, day: PlaylistId | null) => {
@@ -385,6 +392,33 @@ export function MobileApp({ store }: { store: LanaStore }) {
       if (current) store.removeFromPlaylist(taskId, current)
     },
     [store, setPlaylistDay],
+  )
+
+  /** A move made from a row leaves the row, so the pill says where it went. */
+  const moveTaskToDay = useCallback(
+    (taskId: string, day: PlaylistId | null) => {
+      planTask(taskId, day)
+      showPill(day ? `Moved to ${PLAYLIST_META[day].name}` : 'Taken off the plan')
+    },
+    [planTask, showPill],
+  )
+
+  const moveTaskToList = useCallback(
+    (taskId: string, listId: string) => {
+      store.setTaskList(taskId, listId)
+      const list = stateRef.current.lists.find((l) => l.id === listId)
+      showPill(`Moved to ${list?.name ?? 'your lists'}`)
+    },
+    [store, showPill],
+  )
+
+  const reorderQueue = useCallback(
+    (visibleIds: string[], activeId: string, overId: string) => {
+      const stored = stateRef.current.playlists[playlistDay]
+      const next = moveWithinGroup(stored, visibleIds, activeId, overId)
+      if (next !== stored) store.reorderPlaylist(playlistDay, next)
+    },
+    [store, playlistDay],
   )
 
   const reorderLists = useCallback(
@@ -432,6 +466,24 @@ export function MobileApp({ store }: { store: LanaStore }) {
         `Cleared ${taskIds.length} completed`,
         store.undo,
       )
+    },
+    [store, showToast],
+  )
+
+  /**
+   * Pinning is a flick or a menu item, so nothing on screen says it happened
+   * beyond a section the row jumps to. The toast names it and offers it back.
+   */
+  const toggleListPinned = useCallback(
+    (listId: string) => {
+      const list = stateRef.current.lists.find((l) => l.id === listId)
+      store.toggleListPinned(listId)
+      if (list) {
+        showToast(
+          `${list.pinned ? 'Unpinned' : 'Pinned'} · ${list.name}`,
+          store.undo,
+        )
+      }
     },
     [store, showToast],
   )
@@ -533,11 +585,15 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onShuffle={() => setShuffleIndex((index) => index + 1)}
             onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
+            onMoveTask={setMoveTaskId}
+            onDeleteTask={deleteTask}
             onTimeChange={store.setTaskTime}
             onToggleCommitment={store.toggleCommitmentDone}
             onOpenCommitment={(id) => setCommitmentSheet({ id })}
             onToggleCompletedOpen={() => setCompletedOpen((open) => !open)}
             onClearCompleted={clearCompletedTasks}
+            onOpenSort={() => setQueueSortOpen(true)}
+            onReorder={reorderQueue}
             onPlanFromLists={() => setPlanDay(playlistDay)}
           />
         </>
@@ -568,6 +624,8 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onOpenSort={() => setSortOpen(true)}
             onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
+            onMoveTask={setMoveTaskId}
+            onDeleteTask={deleteTask}
           />
         </>
       )}
@@ -599,7 +657,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
             onQueryChange={setQuery}
             onOpenList={setListDetailId}
             onReorder={reorderLists}
-            onTogglePin={store.toggleListPinned}
+            onTogglePin={toggleListPinned}
             onToggleTask={toggleTask}
             onOpenTask={setOpenTaskId}
             onTriageFile={store.setTaskList}
@@ -650,7 +708,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
           <ScreenHeader title="Settings" subtitle="Lana OS" />
           <SettingsScreen
             theme={state.theme}
-            sortTodayByTime={state.sortTodayByTime}
             completedCount={completedCount}
             trashCount={state.trash.length}
             textCaptureConnected={textCaptureConnected}
@@ -661,7 +718,6 @@ export function MobileApp({ store }: { store: LanaStore }) {
             unsureListId={state.unsureListId}
             prefs={prefs}
             onToggleTheme={store.toggleTheme}
-            onSortTodayByTimeChange={store.setSortTodayByTime}
             onCaptureNumberChange={(captureNumberOverride) =>
               updatePrefs((prev) => ({
                 ...prev,
@@ -730,6 +786,15 @@ export function MobileApp({ store }: { store: LanaStore }) {
         onDelete={deleteTask}
       />
 
+      <MoveSheet
+        task={moveTask}
+        lists={state.lists}
+        location={moveTaskLocation}
+        onClose={() => setMoveTaskId(null)}
+        onPlan={moveTaskToDay}
+        onListChange={moveTaskToList}
+      />
+
       <CommitmentSheet
         open={commitmentSheet !== null}
         commitment={
@@ -750,7 +815,7 @@ export function MobileApp({ store }: { store: LanaStore }) {
         }
         onClose={() => setListSheetOpen(false)}
         onRename={store.renameList}
-        onTogglePin={store.toggleListPinned}
+        onTogglePin={toggleListPinned}
         onDelete={requestDeleteList}
       />
 
@@ -769,6 +834,13 @@ export function MobileApp({ store }: { store: LanaStore }) {
         onSelect={(next) =>
           updatePrefs((prev) => ({ ...prev, listSort: next }))
         }
+      />
+
+      <QueueSortSheet
+        open={queueSortOpen}
+        byTime={state.sortTodayByTime}
+        onClose={() => setQueueSortOpen(false)}
+        onSelect={store.setSortTodayByTime}
       />
 
       <TrashSheet

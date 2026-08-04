@@ -41,46 +41,48 @@ export function CommitmentRow({
 
   return (
     <li className={`mos-task${commitment.done ? ' is-done' : ''}`}>
-      <button
-        type="button"
-        className="mos-task__check"
-        aria-pressed={commitment.done}
-        aria-label={commitment.done ? 'Mark not done' : 'Mark done'}
-        onClick={() => onToggle(commitment.id)}
-      >
-        <CheckIcon />
-      </button>
+      <div className="mos-task__slide">
+        <button
+          type="button"
+          className="mos-task__check"
+          aria-pressed={commitment.done}
+          aria-label={commitment.done ? 'Mark not done' : 'Mark done'}
+          onClick={() => onToggle(commitment.id)}
+        >
+          <CheckIcon />
+        </button>
 
-      <TimeBox time={commitment.time} />
+        <TimeBox time={commitment.time} hold />
 
-      <button
-        type="button"
-        className="mos-task__body"
-        onClick={() => onOpen(commitment.id)}
-        aria-label={`Edit ${commitment.title}`}
-      >
-        <span className="mos-task__title">{commitment.title}</span>
-        <span className="mos-task__trailing">
-          {commitment.reminderMinutesBefore !== null && (
-            <span className="mos-task__bell" aria-label="Reminder set">
-              <BellIcon />
-            </span>
-          )}
-          {showDate && (
-            <span className="mos-task__day">
-              {formatDate(commitment.date, todayKey)}
-            </span>
-          )}
-          {list && (
-            <span
-              className="mos-task__list"
-              style={{ '--tag': list.color } as CSSProperties}
-            >
-              {list.name}
-            </span>
-          )}
-        </span>
-      </button>
+        <button
+          type="button"
+          className="mos-task__body"
+          onClick={() => onOpen(commitment.id)}
+          aria-label={`Edit ${commitment.title}`}
+        >
+          <span className="mos-task__title">{commitment.title}</span>
+          <span className="mos-task__trailing">
+            {commitment.reminderMinutesBefore !== null && (
+              <span className="mos-task__bell" aria-label="Reminder set">
+                <BellIcon />
+              </span>
+            )}
+            {showDate && (
+              <span className="mos-task__day">
+                {formatDate(commitment.date, todayKey)}
+              </span>
+            )}
+            {list && (
+              <span
+                className="mos-task__list"
+                style={{ '--tag': list.color } as CSSProperties}
+              >
+                {list.name}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
     </li>
   )
 }

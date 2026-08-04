@@ -4,29 +4,38 @@ type Props = {
   time: string | null
   /** Omit to render a read-only stamp. */
   onChange?: (time: string | null) => void
+  /**
+   * Keep the column even with nothing to show. A read-only run of rows — the
+   * completed fold, the calendar's feed events — stays lined up with the rows
+   * above it this way.
+   */
+  hold?: boolean
   label?: string
 }
 
 /**
- * The monospace time stamp. On a Playlist row it is always present — a quiet
- * dash when there is no time — and holds a fixed width, so the left edge of
- * every row lines up and a time is one tap away rather than a trip through the
- * edit sheet.
+ * The time on the left of a row. A time that is set reads as a small chip in
+ * the row's own text colour, so "this happens at a time" is unmistakable at a
+ * glance; an empty slot stays a faint dash, which is somewhere to put a time
+ * rather than something to read.
  *
- * The native picker is driven by a transparent input laid over the stamp,
- * which is also what gives it a full-height tap target.
+ * The column holds a fixed width either way, so the left edge of every title on
+ * a day lines up. The native picker is driven by a transparent input laid over
+ * the chip, which is also what gives it a full-height tap target.
  */
-export function TimeBox({ time, onChange, label = 'Time' }: Props) {
+export function TimeBox({ time, onChange, hold = false, label = 'Time' }: Props) {
   const shown = formatPlanTime(time)
-  const empty = !shown
 
-  // A stamp with nothing to stamp and nothing to set is just empty space.
   if (!onChange) {
-    return shown ? <span className="mos-time-box">{shown}</span> : null
+    if (shown) return <span className="mos-time-box has-time">{shown}</span>
+    // Empty and unsettable: hold the column, or take up no room at all.
+    return hold ? <span className="mos-time-box" aria-hidden /> : null
   }
 
   return (
-    <span className={`mos-time-box mos-time-box--set${empty ? ' is-empty' : ''}`}>
+    <span
+      className={`mos-time-box mos-time-box--set${shown ? ' has-time' : ' is-empty'}`}
+    >
       <span aria-hidden>{shown ?? '–'}</span>
       <input
         type="time"
