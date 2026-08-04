@@ -581,14 +581,8 @@
   border-top-color: transparent;
 }
 
-.mos-index__head {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
 .mos-index__open {
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -598,6 +592,10 @@
   border: 0;
   background: transparent;
   text-align: left;
+}
+
+.mos-index__open:active {
+  background: color-mix(in srgb, var(--surface-2) 75%, transparent);
 }
 
 .mos-index__dot {
@@ -624,6 +622,7 @@
   text-overflow: ellipsis;
 }
 
+/* A bare number. What it counts is obvious from where you are standing. */
 .mos-index__meta {
   color: var(--faint);
   font-size: 0.76rem;
@@ -701,27 +700,15 @@
   font-weight: 600;
 }
 
-/* Pinned lists get a marker, not a coloured background. */
-.mos-index__pin {
+/*
+ * Only pinned rows carry this, and it does nothing when tapped: a row of pin
+ * buttons down the index was fifteen controls nobody was reaching for.
+ */
+.mos-index__pinned {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--accent);
-}
-
-/* Unpinned rows still show the control, just quietly. */
-.mos-index__pin.is-off {
-  color: var(--faint);
-  opacity: 0.5;
-}
-
-.mos-index__pin.is-off:active {
-  opacity: 1;
+  color: color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 .mos-chevron {
@@ -805,13 +792,16 @@
   overflow-wrap: anywhere;
 }
 
+/* A pill that hugs its word, off to the right — not a slab across the card. */
 .mos-now__done {
-  min-height: 46px;
+  align-self: flex-end;
+  min-height: 38px;
+  padding: 0 22px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--accent);
   color: #17110a;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
