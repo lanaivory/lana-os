@@ -606,17 +606,22 @@
   background: var(--tag, var(--muted));
 }
 
+/*
+ * Both lines are set tight enough that a row carrying a count is the same
+ * height as one carrying nothing, so the index reads as an even column.
+ */
 .mos-index__text {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .mos-index__name {
   font-size: 0.94rem;
   font-weight: 600;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -626,6 +631,7 @@
 .mos-index__meta {
   color: var(--faint);
   font-size: 0.76rem;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
